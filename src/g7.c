@@ -5,6 +5,7 @@
 #include <linux/mutex.h>
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
+#include <linux/printk.h>
 
 #include "ioctl.h"
 
@@ -39,37 +40,44 @@ static struct file_operations g7_fops =
 static int
 g7_open(struct inode *inode, struct file *file)
 {
-        printk(KERN_INFO "g7_open\n");
-        return 0;
+    mutex_lock(&lock);
+    pr_info("g7_open\n");
+    return 0;
 }
 
 static int
 g7_release(struct inode *inode, struct file *file)
 {
-        printk(KERN_INFO "g7_release\n");
-        return 0;
+    pr_info("g7_release\n");
+    mutex_unlock(&lock);
+    return 0;
 }
 
 static ssize_t
-g7_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
+g7_read(struct file *file, char __user *buf, size_t len, loff_t *off)
 {
-        printk(KERN_INFO "g7_read\n");
-        return 0;
+    pr_info("g7_read\n");
+    return 0;
 }
 
 static ssize_t
-g7_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
+g7_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 {
-        printk(KERN_INFO "g7_write\n");
-        return 0;
+    pr_info("g7_write\n");
+    return 0;
 }
 
 static long
-g7_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+g7_ioctl(struct file *_file, unsigned int cmd, unsigned long arg)
 {
+    pr_notice("g7_ioctl %#10x\n", cmd);
+
+    if (!(const char *)arg)
+        return -ENOTTY;
+
     switch (cmd) {
     case G7_PING: handle_ping(arg); break;
-    default: break;
+    default: return -ENOTTY;
     }
 
     return 0;
@@ -82,7 +90,7 @@ g7_init(void)
     mutex_init(&lock);
     proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, 0, &g7_fops, buf);
 
-    printk(KERN_INFO "g7 initialized\n");
+    pr_info("g7_init " KERN_ALERT "%#lx\n", G7_PING);
 
     return 0;
 }
@@ -90,6 +98,7 @@ g7_init(void)
 static void
 g7_exit(void)
 {
+    pr_info("g7_exit\n");
     remove_proc_entry(G7_DEVICE, 0);
 }
 
