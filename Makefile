@@ -25,21 +25,21 @@ build:
 clean:
 	@make -C $(KERNELDIR) M=$(PWD) clean
 
-test: debug
-test: remove
-test: clear_dmesg
-test: install
-test: dmesg
+test: debug remove clear_dmesg install
+	-@sudo ./check_pingpong.py /proc/g7rkp
+	-@dmesg
 
-install: remove
-	@sudo insmod ./$(TARGET).ko
+.PHONY: install
+install:
+	-@sudo insmod ./$(TARGET).ko
 
+.PHONY: remove
 remove:
-	@sudo rmmod $(TARGET)
+	-@sudo rmmod $(TARGET)
 
 .PHONY: clear_dmesg
 clear_dmesg:
-	@sudo dmesg -c >/
+	@sudo dmesg -c >/dev/null
 
 .PHONY: dmesg
 dmesg:
