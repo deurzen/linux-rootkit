@@ -37,10 +37,10 @@ detect_channel(unsigned cmd)
 int
 handle_ping(unsigned long arg)
 {
-    copy_from_user(buf, (const char *)arg, BUFLEN);
+    (void)copy_from_user(buf, (const char *)arg, BUFLEN);
     if (!strcmp("PING", buf)) {
         buf[1] = 'O';
-        copy_to_user((char *)arg, buf, BUFLEN);
+        (void)copy_to_user((char *)arg, buf, BUFLEN);
     }
 
     return 0;

