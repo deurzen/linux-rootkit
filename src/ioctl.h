@@ -8,8 +8,19 @@
 
 #define G7_PING _IOWR(G7_MAGIC_NUMBER, 0x0, char *)
 
+#define G7_FILEHIDE _IOR(G7_MAGIC_NUMBER, 0x1, char *)
 
-void handle_ping(unsigned long);
+typedef struct channel {
+	const char *name;
+	int (*handler)(unsigned long);
+} channel;
+
+void report_channels(void);
+channel detect_channel(unsigned int);
+
+// handlers
+int handle_ping(unsigned long);
+int handle_filehide(unsigned long);
 
 
 #endif//_GROUP7_IOCTL_H

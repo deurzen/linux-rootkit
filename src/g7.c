@@ -7,10 +7,10 @@
 #include <linux/uaccess.h>
 #include <linux/printk.h>
 
+#include "common.h"
 #include "ioctl.h"
 
 #define BUFLEN 4096
-
 
 static int  __init g7_init(void);
 static void __exit g7_exit(void);
@@ -41,14 +41,14 @@ static int
 g7_open(struct inode *inode, struct file *file)
 {
     mutex_lock(&lock);
-    pr_info("g7_open\n");
+    DEBUG_INFO("[g7_open]\n");
     return 0;
 }
 
 static int
 g7_release(struct inode *inode, struct file *file)
 {
-    pr_info("g7_release\n");
+    DEBUG_INFO("[g7_release]\n");
     mutex_unlock(&lock);
     return 0;
 }
@@ -56,31 +56,27 @@ g7_release(struct inode *inode, struct file *file)
 static ssize_t
 g7_read(struct file *file, char __user *buf, size_t len, loff_t *off)
 {
-    pr_info("g7_read\n");
+    DEBUG_INFO("[g7_read]\n");
     return 0;
 }
 
 static ssize_t
 g7_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 {
-    pr_info("g7_write\n");
+    DEBUG_INFO("[g7_write]\n");
     return 0;
 }
 
 static long
 g7_ioctl(struct file *_file, unsigned int cmd, unsigned long arg)
 {
-    pr_notice("g7_ioctl %#10x\n", cmd);
+    channel c = detect_channel(cmd);
+    DEBUG_NOTICE("[g7_ioctl] on %#10x (%s)\n", cmd, c.name);
 
-    if (!(const char *)arg)
+    if (((const char *)arg) && c.handler)
+        return c.handler(arg);
+    else
         return -ENOTTY;
-
-    switch (cmd) {
-    case G7_PING: handle_ping(arg); break;
-    default: return -ENOTTY;
-    }
-
-    return 0;
 }
 
 
@@ -90,7 +86,8 @@ g7_init(void)
     mutex_init(&lock);
     proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, 0, &g7_fops, buf);
 
-    pr_info("g7_init " KERN_ALERT "%#lx\n", G7_PING);
+    DEBUG_INFO("[g7_init] at /proc/%s\n", G7_DEVICE);
+    report_channels();
 
     return 0;
 }
@@ -98,7 +95,7 @@ g7_init(void)
 static void
 g7_exit(void)
 {
-    pr_info("g7_exit\n");
+    DEBUG_INFO("[g7_exit]\n");
     remove_proc_entry(G7_DEVICE, 0);
 }
 
