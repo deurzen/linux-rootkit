@@ -1,21 +1,46 @@
 TARGET := g7
 KERNELDIR := /lib/modules/$(shell uname -r)/build
 
-src_files := $(wildcard $(src)/src/*.c)
-src_files += $(wildcard $(src)/src/$(TARGET)/*.c)
-src_files := $(src_files:$(src)/%=%)
+DEBUG_CFLAGS := -DDEBUG
+
+SRC_FILES := $(wildcard $(src)/src/*.c)
+SRC_FILES += $(wildcard $(src)/src/$(TARGET)/*.c)
+SRC_FILES := $(SRC_FILES:$(src)/%=%)
 
 obj-m += $(TARGET).o
-$(TARGET)-objs := $(src_files:%.c=%.o)
+$(TARGET)-objs := $(SRC_FILES:%.c=%.o)
 
-all:
-	make -C $(KERNELDIR) M=$(PWD) modules
+ccflags-y := -std=gnu99 -Wno-declaration-after-statement
+
+all: test
+
+debug: clean
+	@make -C $(KERNELDIR) M=$(PWD) ccflags-y="-DDEBUG" modules
+
+release: clean build
+
+build:
+	@make -C $(KERNELDIR) M=$(PWD) modules
 
 clean:
-	make -C $(KERNELDIR) M=$(PWD) clean
+	@make -C $(KERNELDIR) M=$(PWD) clean
 
-install:
-	sudo insmod ./$(TARGET).ko
+test: debug
+test: remove
+test: clear_dmesg
+test: install
+test: dmesg
+
+install: remove
+	@sudo insmod ./$(TARGET).ko
 
 remove:
-	sudo rmmod $(TARGET)
+	@sudo rmmod $(TARGET)
+
+.PHONY: clear_dmesg
+clear_dmesg:
+	@sudo dmesg -c >/
+
+.PHONY: dmesg
+dmesg:
+	@dmesg
