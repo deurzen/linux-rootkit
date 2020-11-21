@@ -5,10 +5,10 @@
 #include <linux/dirent.h>
 #include <linux/syscalls.h>
 
-extern void **sys_call_table;
+extern unsigned long *sys_call_table;
 
-extern long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
-extern long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
+extern asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
+extern asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
 
 int retrieve_sys_call_table(void);
 void init_hooks(void);
