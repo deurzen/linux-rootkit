@@ -22,7 +22,7 @@ static int     g7_open(struct inode *, struct file *);
 static int     g7_release(struct inode *, struct file *);
 static ssize_t g7_read(struct file *, char __user *, size_t, loff_t *);
 static ssize_t g7_write(struct file *, const char *, size_t, loff_t *);
-static long    g7_ioctl(struct file *, unsigned int, unsigned long);
+static long    g7_ioctl(struct file *, unsigned, unsigned long);
 
 
 static struct mutex lock;
@@ -75,7 +75,7 @@ g7_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 }
 
 static long
-g7_ioctl(struct file *_file, unsigned int cmd, unsigned long arg)
+g7_ioctl(struct file *_file, unsigned cmd, unsigned long arg)
 {
     channel_t c = detect_channel(cmd);
     DEBUG_NOTICE("[g7_ioctl] on %#10x (%s)\n", cmd, c.name);

@@ -24,7 +24,7 @@ report_channels(void)
 }
 
 channel_t
-detect_channel(unsigned int cmd)
+detect_channel(unsigned cmd)
 {
     switch (cmd) {
     case G7_PING:     return (channel_t){ "PING",     handle_ping     };

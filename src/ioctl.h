@@ -16,7 +16,7 @@ typedef struct {
 } channel_t;
 
 void report_channels(void);
-channel_t detect_channel(unsigned int);
+channel_t detect_channel(unsigned);
 
 // handlers
 int handle_ping(unsigned long);
