@@ -10,13 +10,13 @@
 
 #define G7_FILEHIDE _IOR(G7_MAGIC_NUMBER, 0x1, char *)
 
-typedef struct channel {
-	const char *name;
-	int (*handler)(unsigned long);
-} channel;
+typedef struct {
+    const char *name;
+    int (*handler)(unsigned long);
+} channel_t;
 
 void report_channels(void);
-channel detect_channel(unsigned int);
+channel_t detect_channel(unsigned int);
 
 // handlers
 int handle_ping(unsigned long);

