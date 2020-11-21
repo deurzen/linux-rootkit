@@ -21,8 +21,8 @@ init_hooks(void)
 {
     disable_protection();
 
-	sys_getdents = (void *)sys_call_table[__NR_getdents];
-	sys_getdents64 = (void *)sys_call_table[__NR_getdents64];
+    sys_getdents = (void *)sys_call_table[__NR_getdents];
+    sys_getdents64 = (void *)sys_call_table[__NR_getdents64];
 
     enable_protection();
 }
