@@ -116,6 +116,7 @@ g7_exit(void)
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Group 7");
 MODULE_DESCRIPTION("Assignment 3");
+MODULE_INFO(intree, "Y");
 
 module_init(g7_init);
 module_exit(g7_exit);
