@@ -91,13 +91,12 @@ static int
 g7_init(void)
 {
     mutex_init(&lock);
-    proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, 0, &g7_fops, buf);
+    proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, NULL, &g7_fops, buf);
 
     if (retrieve_sys_call_table())
         return -1;
 
     init_hooks();
-
     DEBUG_INFO("[g7_init] at /proc/%s\n", G7_DEVICE);
     report_channels();
 
@@ -107,9 +106,9 @@ g7_init(void)
 static void
 g7_exit(void)
 {
-    DEBUG_INFO("[g7_exit]\n");
     remove_proc_entry(G7_DEVICE, 0);
     remove_hooks();
+    DEBUG_INFO("[g7_exit]\n");
 }
 
 

