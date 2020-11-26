@@ -1,4 +1,5 @@
 /.*.ko.cmd
+/*.img
 /.*.mod.cmd
 /.*.mod.o.cmd
 /.*.o.cmd
