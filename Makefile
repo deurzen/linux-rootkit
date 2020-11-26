@@ -12,7 +12,7 @@ $(TARGET)-objs := $(SRC_FILES:%.c=%.o)
 
 ccflags-y := -std=gnu99 -Wno-declaration-after-statement
 
-all: test
+all: build
 
 debug: clean
 	@make -C $(KERNELDIR) M=$(PWD) ccflags-y="-DDEBUG" modules
@@ -26,20 +26,20 @@ clean:
 	@make -C $(KERNELDIR) M=$(PWD) clean
 
 test: debug remove clear_dmesg install
-	-@sudo ./check_pingpong.py /proc/g7rkp
+	-@./check_pingpong.py /proc/g7rkp
 	-@dmesg
 
 .PHONY: install
 install:
-	-@sudo insmod ./$(TARGET).ko
+	-@insmod ./$(TARGET).ko
 
 .PHONY: remove
 remove:
-	-@sudo rmmod $(TARGET)
+	-@rmmod $(TARGET)
 
 .PHONY: clear_dmesg
 clear_dmesg:
-	@sudo dmesg -c >/dev/null
+	@dmesg -c >/dev/null
 
 .PHONY: dmesg
 dmesg:
