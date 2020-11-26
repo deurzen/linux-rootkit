@@ -12,3 +12,4 @@
 /modules.order
 /src/.*.o.cmd
 /src/*.o
+/rkctl

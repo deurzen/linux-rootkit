@@ -22,6 +22,9 @@ release: clean build
 build:
 	@make -C $(KERNELDIR) M=$(PWD) modules
 
+client:
+	@cc -O2 -std=gnu99 -o ./rkctl ./src/rkctl/rkctl.c
+
 clean:
 	@make -C $(KERNELDIR) M=$(PWD) clean
 

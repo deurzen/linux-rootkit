@@ -1,11 +1,13 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
+#include <linux/ioctl.h>
 
+#include "channel.h"
 #include "common.h"
-#include "rootkit.h"
-#include "ioctl.h"
 #include "filehide.h"
+#include "ioctl.h"
+#include "rootkit.h"
 
 #define BUFLEN 4096
 

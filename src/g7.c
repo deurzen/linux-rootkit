@@ -7,10 +7,11 @@
 #include <linux/uaccess.h>
 #include <linux/printk.h>
 
-#include "common.h"
-#include "rootkit.h"
 #include "ioctl.h"
+#include "channel.h"
+#include "common.h"
 #include "hook.h"
+#include "rootkit.h"
 
 #define BUFLEN 4096
 
