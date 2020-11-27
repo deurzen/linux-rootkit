@@ -11,8 +11,6 @@
 
 #define BUFLEN 4096
 
-static char buf[BUFLEN];
-
 extern rootkit_t rootkit;
 
 void
@@ -39,6 +37,8 @@ detect_channel(unsigned cmd)
 int
 handle_ping(unsigned long arg)
 {
+    char buf[BUFLEN];
+
     if (!(const char *)arg)
         return -ENOTTY;
 
@@ -65,8 +65,7 @@ handle_filehide(unsigned long arg)
         rootkit.hiding_files = 0;
     }
 
-    DEBUG_NOTICE("filehide toggled %s",
-            rootkit.hiding_files ? "on" : "off");
+    DEBUG_NOTICE("filehide %s\n", rootkit.hiding_files ? "on" : "off");
 
     return 0;
 }
