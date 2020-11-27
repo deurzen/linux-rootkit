@@ -25,6 +25,9 @@ build:
 client:
 	@cc -O2 -std=gnu99 -o ./rkctl ./src/rkctl/rkctl.c
 
+clean_client:
+	@rm -f ./rkctl
+
 clean:
 	@make -C $(KERNELDIR) M=$(PWD) clean
 
