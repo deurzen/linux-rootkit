@@ -81,7 +81,7 @@ g7_ioctl(struct file *_file, unsigned cmd, unsigned long arg)
     channel_t c = detect_channel(cmd);
     DEBUG_NOTICE("[g7_ioctl] on %#10x (%s)\n", cmd, c.name);
 
-    if (((const char *)arg) && c.handler)
+    if (c.handler)
         return c.handler(arg);
     else
         return -ENOTTY;

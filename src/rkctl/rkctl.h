@@ -17,7 +17,7 @@ typedef struct {
 } cmd_t;
 
 cmd_t parse_input(int, char **);
-int issue_ioctl(unsigned long, char *);
+int issue_ioctl(unsigned long, const char *);
 void help();
 
 int handle_ping(void *);
