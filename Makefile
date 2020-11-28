@@ -39,6 +39,9 @@ test: debug remove clear_dmesg install
 install:
 	-@insmod ./$(TARGET).ko
 
+.PHONY: tags
+	-@ctags -R .
+
 .PHONY: remove
 remove:
 	-@rmmod $(TARGET)
