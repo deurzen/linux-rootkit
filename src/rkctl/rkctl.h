@@ -1,7 +1,7 @@
 #ifndef _GROUP7_RKCTL_H
 #define _GROUP7_RKCTL_H
 
-#define ARGVCMP(i, x) (!strncmp(argv[i], (x), strlen(x)))
+#define ARGVCMP(i, x) (!strcmp(argv[i], (x)))
 #define ASSERT_ARGC(x, msg) \
     do { \
         if (argc <= x) { \
