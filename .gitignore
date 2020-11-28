@@ -13,3 +13,4 @@
 /src/.*.o.cmd
 /src/*.o
 /rkctl
+/tags
