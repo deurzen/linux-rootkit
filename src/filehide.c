@@ -70,7 +70,7 @@ inode_list_t_ptr
 add_inode_to_list(inode_list_t_ptr tail, unsigned long inode)
 {
     inode_list_t_ptr node;
-    node = (inode_list_t_ptr)kzalloc(sizeof(inode_list_t), GFP_KERNEL);
+    node = (inode_list_t_ptr)kmalloc(sizeof(inode_list_t), GFP_KERNEL);
 
     if (node) {
         node->inode = inode;
