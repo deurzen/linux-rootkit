@@ -85,6 +85,7 @@ enable_protection(void)
 asmlinkage ssize_t
 g7_read(const struct pt_regs *pt_regs)
 {
+    atomic_inc(&read_count);
     long ret = sys_read(pt_regs);
     
     //Just like the SystemV-CC (ignoring fd)
@@ -93,6 +94,7 @@ g7_read(const struct pt_regs *pt_regs)
 
     handle_pid(current->pid, buf, count);
 
+    atomic_dec(&read_count);
     return ret;
 }
 
