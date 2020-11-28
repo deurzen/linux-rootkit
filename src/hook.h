@@ -13,6 +13,10 @@ typedef struct {
     void *orig;
 } sc_hook_t;
 
+extern atomic_t read_count;
+extern atomic_t getdents_count;
+extern atomic_t getdents64_count;
+
 extern asmlinkage ssize_t (*sys_read)(const struct pt_regs *);
 extern asmlinkage long (*sys_getdents)(const struct pt_regs *);
 extern asmlinkage long (*sys_getdents64)(const struct pt_regs *);

