@@ -40,6 +40,7 @@ install:
 	-@insmod ./$(TARGET).ko
 
 .PHONY: tags
+tags:
 	-@ctags -R .
 
 .PHONY: remove
