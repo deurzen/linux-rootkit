@@ -15,7 +15,7 @@ ccflags-y := -std=gnu99 -Wno-declaration-after-statement
 all: build
 
 debug: clean
-	@make -C $(KERNELDIR) M=$(PWD) ccflags-y="-DDEBUG" modules
+	@make -C $(KERNELDIR) M=$(PWD) ccflags-y="$(ccflags-y) -DDEBUG" modules
 
 release: clean build
 
