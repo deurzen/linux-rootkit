@@ -10,8 +10,6 @@ typedef struct pid_list {
     pid_t pid;
     pid_list_t_ptr prev;
     pid_list_t_ptr next;
-    pid_list_t_ptr head;
-    pid_list_t_ptr tail;
 } pid_list_t;
 
 extern pid_list_t hidden_pids;
