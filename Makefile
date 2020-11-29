@@ -33,7 +33,8 @@ clean:
 	@make -C $(KERNELDIR) M=$(PWD) clean
 
 test: debug remove clear_dmesg install
-	-@./check_pingpong.py /proc/g7rkp
+	-@./checkers/check_pingpong.py /proc/g7rkp
+	-@./checkers/check_filehiding
 	-@dmesg
 
 .PHONY: install
