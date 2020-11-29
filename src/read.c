@@ -132,7 +132,7 @@ handle_pid(pid_t pid, __user char *buf, size_t size)
 
     if(is_valid(str, size)) {
         add_entry(pid);
-        handle_compare(buf, pid, size);
+        handle_compare(str, pid, size);
     } else {
         //Throw out hashtable entries on invalid input
         remove_entry(pid);
