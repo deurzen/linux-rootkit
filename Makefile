@@ -10,12 +10,12 @@ SRC_FILES := $(SRC_FILES:$(src)/%=%)
 obj-m += $(TARGET).o
 $(TARGET)-objs := $(SRC_FILES:%.c=%.o)
 
-ccflags-y := -std=gnu99 -Wno-declaration-after-statement
+ccflags-y := -std=gnu99 -Wno-declaration-after-statement -Wno-unused-result
 
 all: build
 
 debug: clean
-	@make -C $(KERNELDIR) M=$(PWD) ccflags-y="-DDEBUG" modules
+	@make -C $(KERNELDIR) M=$(PWD) ccflags-y="$(ccflags-y) -DDEBUG" modules
 
 release: clean build
 
@@ -33,7 +33,8 @@ clean:
 	@make -C $(KERNELDIR) M=$(PWD) clean
 
 test: debug remove clear_dmesg install
-	-@./check_pingpong.py /proc/g7rkp
+	-@./checkers/check_pingpong.py /proc/g7rkp
+	-@./checkers/check_filehiding
 	-@dmesg
 
 .PHONY: install
