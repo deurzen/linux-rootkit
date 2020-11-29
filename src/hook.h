@@ -13,6 +13,9 @@ typedef struct {
     void *orig;
 } sc_hook_t;
 
+extern atomic_t read_install_count;
+extern atomic_t getdents_install_count;
+
 extern atomic_t read_count;
 extern atomic_t getdents_count;
 extern atomic_t getdents64_count;

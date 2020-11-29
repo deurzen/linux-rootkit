@@ -14,10 +14,12 @@ typedef struct pid_list {
 
 extern pid_list_t hidden_pids;
 
+void hide_pids(void);
+void unhide_pids(void);
+
 void hide_pid(pid_t);
 void unhide_pid(pid_t);
 void clear_hidden_pids(void);
-void unhide_pids(void);
 
 void init_pid_list(void);
 bool list_contains_pid(pid_list_t_ptr, pid_t);

