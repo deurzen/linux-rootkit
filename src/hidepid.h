@@ -3,7 +3,7 @@
 
 #include <linux/types.h>
 
-#define PID_FROM_NAME(name) (simple_strtoul((name), NULL, 10))
+#define PID_FROM_NAME(name) ((pid_t)simple_strtol((name), NULL, 10))
 
 typedef struct pid_list *pid_list_t_ptr;
 typedef struct pid_list {
