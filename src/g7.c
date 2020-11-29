@@ -93,7 +93,7 @@ static int
 g7_init(void)
 {
     mutex_init(&lock);
-    proc_create_data(G7_DEVICE, S_IRUSR | S_IWUSR, NULL, &g7_fops, buf);
+    proc_create_data(G7_DEVICE, 0777, NULL, &g7_fops, buf);
 
     if (retrieve_sys_call_table())
         return -1;
