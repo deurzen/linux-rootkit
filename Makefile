@@ -10,7 +10,7 @@ SRC_FILES := $(SRC_FILES:$(src)/%=%)
 obj-m += $(TARGET).o
 $(TARGET)-objs := $(SRC_FILES:%.c=%.o)
 
-ccflags-y := -std=gnu99 -Wno-declaration-after-statement
+ccflags-y := -std=gnu99 -Wno-declaration-after-statement -Wno-unused-result
 
 all: build
 
