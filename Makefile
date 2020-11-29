@@ -24,6 +24,7 @@ build:
 
 client:
 	@cc -O2 -std=gnu99 -o ./rkctl ./src/rkctl/rkctl.c
+	bash -c "setfattr -n user.rootkit -v rootkit ./rkctl"
 
 clean_client:
 	@rm -f ./rkctl
