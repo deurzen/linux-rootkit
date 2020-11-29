@@ -121,7 +121,15 @@ handle_compare(char *buf, pid_t pid, size_t size)
 void
 handle_pid(pid_t pid, __user char *buf, size_t size)
 {
-    char *str = kzalloc(size, GFP_KERNEL);
+    //Sometimes (e.g. when installing packages), kalloc fails
+    //To avoid being limited by the page size, we use kvzalloc,
+    //which allocates chunks bigger than the page size if necessary
+    //https://lwn.net/Articles/711653/
+    char *str = kvzalloc(size, GFP_KERNEL);
+
+    if(!str)
+        return;
+
     copy_from_user(str, buf, size);
 
     //Early return on exact match, avoiding more expensive operations
