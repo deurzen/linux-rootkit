@@ -65,6 +65,8 @@ unbackdoor(void)
 
             int cur;
 
+            //Sleeping here is very important, as without it
+            //we would stall the CPU..
             while ((cur = atomic_read(&read_count)) > 0) {
                 DEBUG_INFO("Waiting for %d tasks", cur);
                 msleep(250);
