@@ -44,8 +44,6 @@ may_fd(struct file *dirfile)
             int i = 0;
 
             while(sub = (strsep(&cur, dir_sep))) {
-                DEBUG_INFO("sub is %s\n", sub);
-
                 switch(i++) {
                     case 1:
                         if(strcmp(sub, "proc"))
@@ -98,10 +96,7 @@ fill_fds(pid_t pid)
     if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
         return;
 
-    if(!(fs = get_files_struct(task)))
-        return;
-
-    iterate_fd(fs, 0, (void *)fd_callback, NULL);    
+    iterate_fd(task->files, 0, (void *)fd_callback, NULL);    
 }
 
 void
