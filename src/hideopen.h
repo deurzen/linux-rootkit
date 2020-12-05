@@ -12,8 +12,11 @@ typedef struct fd_list {
 
 extern fd_list_t hidden_fds;
 
+pid_t may_fd(struct file *dirfile);
+
 void clear_hidden_fds(void);
 bool list_contains_fd(fd_list_t_ptr, int);
+
 fd_list_t_ptr find_fd_in_list(fd_list_t_ptr, int);
 fd_list_t_ptr add_fd_to_list(fd_list_t_ptr, int);
 fd_list_t_ptr remove_fd_from_list(fd_list_t_ptr list, int fd);
