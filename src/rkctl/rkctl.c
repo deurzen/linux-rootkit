@@ -207,14 +207,14 @@ help()
 {
     printf("usage: %s <command>\n\n", progname);
     printf("These are the available commands:\n");
-    printf("%-32s %s\n", "help", "this message");
-    printf("%-32s %s\n", "ping", "send an echo request to the rootkit");
-    printf("%-32s %s\n", "unload", "gracefully unload the rootkit module");
-    printf("%-32s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
-    printf("%-32s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
-    printf("%-32s %s\n", "backdoor <execve_command>", "exec a command as root");
-    printf("%-32s %s\n", "shell", "obtain a shell as root");
-    printf("%-32s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or tty (1)");
-    printf("%-32s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
-    printf("%-32s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
+    printf("%-38s %s\n", "help", "this message");
+    printf("%-38s %s\n", "ping", "send an echo request to the rootkit");
+    printf("%-38s %s\n", "unload", "gracefully unload the rootkit module");
+    printf("%-38s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
+    printf("%-38s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
+    printf("%-38s %s\n", "backdoor <execve_command>", "exec a command as root");
+    printf("%-38s %s\n", "shell", "obtain a shell as root");
+    printf("%-38s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or tty (1)");
+    printf("%-38s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
+    printf("%-38s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
 }
