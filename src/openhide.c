@@ -64,6 +64,7 @@ may_fd(struct file *dirfile)
     buf = kzalloc(512, GFP_KERNEL);
 
     if (dirfile && !strcmp(dirfile->f_path.dentry->d_name.name, "fd")) {
+        //Gets the absolute path name for our string tokenization
         char *path = d_path(&dirfile->f_path, buf, 512);
 
         if (!IS_ERR(path)) {
@@ -71,10 +72,10 @@ may_fd(struct file *dirfile)
             char *cur = path;
 
             /**
-             * In the correct directory, the tokens are as follows:
-             * {NULL, proc, [PID], fd}
+             * In the correct directory, the tokens (generated with strsep)
+             * are as follows: {NULL, proc, [PID], fd}
              * We also don't want the task directory, so the third
-             * token should be fd, not task
+             * token should be _fd_, not task
              **/
             int i = 0;
 
@@ -170,6 +171,9 @@ fill_fds(pid_t pid)
     if (!(spid = find_get_pid(pid)) || !(task = pid_task(spid, PIDTYPE_PID)))
         return;
 
+    //https://elixir.bootlin.com/linux/v4.19/source/fs/file.c#L961
+    //Allows us to iterate over the open fds
+    //Conveniently passes our callback a struct file * and also the fd number
     iterate_fd(task->files, 0, (void *)fd_callback, NULL);
 }
 
