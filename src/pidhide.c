@@ -2,7 +2,7 @@
 #include <linux/pid.h>
 
 #include "hook.h"
-#include "hidepid.h"
+#include "pidhide.h"
 
 pid_list_t hidden_pids = {
     .pid  = -1,

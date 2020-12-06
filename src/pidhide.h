@@ -1,5 +1,5 @@
-#ifndef _GROUP7_HIDEPID_H
-#define _GROUP7_HIDEPID_H
+#ifndef _GROUP7_PIDHIDE_H
+#define _GROUP7_PIDHIDE_H
 
 #include <linux/types.h>
 
@@ -27,4 +27,4 @@ pid_list_t_ptr find_pid_in_list(pid_list_t_ptr, pid_t);
 pid_list_t_ptr add_pid_to_list(pid_list_t_ptr, pid_t);
 pid_list_t_ptr remove_pid_from_list(pid_list_t_ptr, pid_t);
 
-#endif//_GROUP7_HIDEPID_H
+#endif//_GROUP7_PIDHIDE_H

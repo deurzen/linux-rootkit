@@ -14,7 +14,7 @@ typedef struct {
     bool hiding_module;
     bool hiding_files;
     bool hiding_pids;
-    bool hiding_open_files;
+    bool hiding_open;
     bd_state_t backdoor;
 } rootkit_t;
 

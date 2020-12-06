@@ -26,6 +26,6 @@ int handle_filehide(void *);
 int handle_backdoor(void *);
 int handle_shellbd(void *);
 int handle_togglebd(void *);
-int handle_hidepid(void *);
+int handle_pidhide(void *);
 
 #endif//_GROUP7_RKCTL_H
