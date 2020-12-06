@@ -7,6 +7,7 @@ while (( "$#" )); do
       echo "options:"
       echo "   --debug: have QEMU listen to an incoming gdb connection on :1234"
       echo "   --block: block before QEMU start"
+      echo "   --ssh:   directly connect to instance over ssh"
       exit
       ;;
     --init)
@@ -62,8 +63,8 @@ if ! test -z $INITREPO; then
 fi
 
 if ! test -z $BLOCKSET && test -z $GDBSET; then
-    >&2 echo "--debug flag must be set with --block"
-    exit 1
+  >&2 echo "--debug flag must be set with --block"
+  exit 1
 fi
 
 qemu-system-x86_64 $PARAMS -hda debian.img -m 4096 -enable-kvm -cpu host -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::2222-:22 &
