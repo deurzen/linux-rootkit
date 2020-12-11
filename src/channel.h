@@ -17,5 +17,6 @@ int handle_openhide(unsigned long);
 int handle_pidhide(unsigned long);
 int handle_backdoor(unsigned long);
 int handle_togglebd(unsigned long);
+int handle_logging(unsigned long);
 
 #endif//_GROUP7_CHANNEL_H

