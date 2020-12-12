@@ -29,7 +29,7 @@ send_udp(char *buf, int buflen)
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
     msg.msg_name = &addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
+    msg.msg_namelen = sizeof(addr);
 
     while (buflen > 0) {
         packlen = (buflen < UDP_MAX_DATA_LEN)
@@ -45,9 +45,6 @@ send_udp(char *buf, int buflen)
         set_fs(KERNEL_DS);
         sent = kernel_sendmsg(sock, &msg, &iov, 1, packlen);
         set_fs(fs);
-
-        if (sent > 0)
-            DEBUG_INFO("[g7] sent %d bytes\n", sent);
     }
 }
 
