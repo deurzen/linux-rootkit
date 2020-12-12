@@ -20,8 +20,8 @@ log_input(const char *ip, const char *port)
     unsigned long ip_ul;
     unsigned long port_ul;
 
-    int size, flag;
-    struct sockaddr_in addr;
+    int size;
+    struct sockaddr_in addr, bind;
     struct msghdr msg;
     struct kvec iov;
     mm_segment_t fs;
@@ -41,26 +41,21 @@ log_input(const char *ip, const char *port)
             ip_ul |= (ip_quad[3 - i] & 0xFF) << (8 * i);
     }
 
-    flag = 1;
-    fs = get_fs();
-    set_fs(KERNEL_DS);
-    kernel_setsockopt(sock, SOL_SOCKET, SO_REUSEADDR , (char *)&flag, sizeof(int));
-    kernel_setsockopt(sock, SOL_SOCKET, SO_REUSEPORT , (char *)&flag, sizeof(int));
-    set_fs(fs);
-
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(ip_ul);
     addr.sin_port = htons(port_ul);
 
-    if (kernel_bind(sock, (struct sockaddr *)&addr, sizeof(addr))) {
+    bind.sin_family = AF_INET;
+    bind.sin_addr.s_addr = htonl((127 << 24) | (0 << 16) | (0 << 8) | (1));
+    bind.sin_port = htons(7777);
+
+    if (kernel_bind(sock, (struct sockaddr *)&bind, sizeof(bind))) {
         sock_release(sock);
         sock = NULL;
         return;
     }
 
-    inet_getname(sock, (struct sockaddr *)&addr, 0);
-
-    char *buf = "test";
+    char *buf = "testing\ntesting\ntesting\ntesting";
     int buflen = strlen(buf), packlen = 0;
 
     msg.msg_control = NULL;
@@ -87,6 +82,9 @@ log_input(const char *ip, const char *port)
         if (size > 0)
             DEBUG_INFO("[g7] sent %d bytes\n", size);
     }
+
+    sock_release(sock);
+    sock = NULL;
 }
 
 void
