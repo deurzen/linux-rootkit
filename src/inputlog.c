@@ -1,8 +1,8 @@
 #include <linux/kernel.h>
 #include <linux/socket.h>
-#include <linux/net.h>
 #include <linux/slab.h>
 #include <linux/inet.h>
+#include <net/sock.h>
 
 #include "common.h"
 #include "inputlog.h"
@@ -17,19 +17,16 @@ log_input(const char *ip, const char *port)
     unsigned long ip_ul;
     unsigned long port_ul;
 
-    struct sockaddr addr;
-	struct msghdr msg;
-	struct iovec iov;
-	int size;
-	mm_segment_t prev_fs;
+    int size;
+    struct sockaddr_in addr;
+    struct msghdr msg;
+    struct kvec iov;
 
     if (sock)
         return;
 
-    if (sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_UDP, &sock))
+    if (sock_create_kern(&init_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock))
         return;
-
-    addr.sa_family = AF_INET;
 
     { // parse ip address and port from passed in strings
         kstrtoul(port, 10, &port_ul);
@@ -40,30 +37,29 @@ log_input(const char *ip, const char *port)
             ip_ul += (ip_quad[i] & 0xFF) << (8 * i);
     }
 
-    if (kernel_bind(sock, &addr, 1 /* TODO */)) {
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(ip_ul);
+    addr.sin_port = htons(port_ul);
+
+    if (kernel_bind(sock, (struct sockaddr *)&addr, sizeof(addr))) {
         sock_release(sock);
         sock = NULL;
         return;
     }
 
     char *buf = "test";
-    int len = strlen(buf);
+    iov.iov_base = buf;
+    iov.iov_len = strlen(buf);
 
-	iov.iov_base = buf;
-	iov.iov_len = len;
+    msg.msg_control = NULL;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+    msg.msg_name = &addr;
+    msg.msg_namelen = sizeof(struct sockaddr_in);
 
-	msg.msg_control = NULL;
-	msg.msg_controllen = 0;
-	msg.msg_flags = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_name = 0;
-	msg.msg_namelen = 0;
-
-	prev_fs = get_fs();
-	set_fs(KERNEL_DS);
-	sock_sendmsg(sock, &msg, len);
-	set_fs(prev_fs);
+    size = kernel_sendmsg(sock, &msg, &iov, 1, strlen(buf));
+    if (size > 0)
+	DEBUG_INFO("sent %d bytes\n", size);
 }
 
 void
