@@ -56,8 +56,8 @@ log_input(const char *ip, const char *port)
 {
     size_t i;
     u8 ip_quad[4];
-    unsigned long ip_ul;
-    unsigned long port_ul;
+    unsigned long remote_ip_ul, local_ip_ul;
+    unsigned long remote_port_ul, local_port_ul;
 
     if (sock)
         return;
@@ -66,32 +66,29 @@ log_input(const char *ip, const char *port)
         return;
 
     { // parse ip address and port from passed in strings
-        kstrtoul(port, 10, &port_ul);
+        kstrtoul(port, 10, &remote_port_ul);
         in4_pton(ip, -1, ip_quad, -1, NULL);
 
-        ip_ul = 0;
+        remote_ip_ul = 0;
         for (i = 0; i < 4; ++i)
-            ip_ul |= (ip_quad[3 - i] & 0xFF) << (8 * i);
+            remote_ip_ul |= (ip_quad[3 - i] & 0xFF) << (8 * i);
+
+        local_ip_ul = (127 << 24) | (0 << 16) | (0 << 8) | 1;
+        local_port_ul = 7777;
     }
 
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(ip_ul);
-    addr.sin_port = htons(port_ul);
+    addr.sin_addr.s_addr = htonl(remote_ip_ul);
+    addr.sin_port = htons(remote_port_ul);
 
     bind.sin_family = AF_INET;
-    bind.sin_addr.s_addr = htonl((127 << 24) | (0 << 16) | (0 << 8) | (1));
-    bind.sin_port = htons(7777);
+    bind.sin_addr.s_addr = htonl(local_ip_ul);
+    bind.sin_port = htons(local_port_ul);
 
     if (kernel_bind(sock, (struct sockaddr *)&bind, sizeof(bind))) {
         sock_release(sock);
         sock = NULL;
-        return;
     }
-
-    char *buf = "testing\ntesting\ntesting\ntesting";
-    int buflen = strlen(buf);
-
-    send_udp(buf, buflen);
 }
 
 void

