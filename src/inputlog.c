@@ -37,11 +37,15 @@ log_input(const char *ip, const char *port)
             ip_ul |= (ip_quad[3 - i] & 0xFF) << (8 * i);
     }
 
-    DEBUG_INFO("reference %lu, ours %lu\n", ((127 << 24) | (0 << 16) | (0 << 8) | (1)), ip_ul);
-
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(ip_ul);
     addr.sin_port = htons(port_ul);
+
+    if (kernel_bind(sock, (struct sockaddr *)&addr, sizeof(addr))) {
+        sock_release(sock);
+        sock = NULL;
+        return;
+    }
 
     char *buf = "test";
     iov.iov_base = buf;
