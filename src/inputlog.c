@@ -103,6 +103,8 @@ send_udp(pid_t pid, struct file *file, char *buf, int buflen)
         kernel_sendmsg(sock, &msg, &iov, 1, packlen);
         set_fs(fs);
     }
+
+    kfree(session_buf);
 }
 
 void
