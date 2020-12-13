@@ -78,12 +78,14 @@ unhide_sockets(void)
 void
 hide_port(port_t port, proto proto)
 {
+    DEBUG_INFO("hide_port: port %d, proto %d\n", port, proto);
     add_port_to_list(&hidden_ports, port, proto);
 }
 
 void
 unhide_port(port_t port, proto proto)
 {
+    DEBUG_INFO("hide_port: port %d, proto %d\n", port, proto);
     remove_port_from_list(&hidden_ports, port, proto);
 }
 
