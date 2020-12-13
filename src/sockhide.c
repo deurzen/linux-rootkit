@@ -114,16 +114,7 @@ find_port_in_list(port_list_t_ptr head, port_t port, proto proto)
 {
     port_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (proto == -1) {
-            if (i->port == port
-                && (i->proto == tcp4
-                    || i->proto == udp4
-                    || i->proto == tcp6
-                    || i->proto == udp6))
-            {
-                return i;
-            }
-        } else if (i->port == port && i->proto == proto)
+        if (i->port == port && (proto == -1 || i->proto == proto))
             return i;
 
     return NULL;
