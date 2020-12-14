@@ -260,19 +260,18 @@ help()
 {
     printf("usage: %s <command>\n\n", progname);
     printf("These are the available commands:\n");
-    printf("%-38s %s\n", "help", "this message");
-    printf("%-38s %s\n", "ping", "send an echo request to the rootkit");
-    printf("%-38s %s\n", "unload", "gracefully unload the rootkit module");
-    printf("%-38s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
-    printf("%-38s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
-    printf("%-38s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
-    printf("%-38s %s\n", "socket hide <tcp | udp> <port>", "hide a tcp or udp with the given port");
-    printf("%-38s %s\n", "socket unhide <tcp | udp> <port>", "unhide a tcp or udp with the given port");
-    printf("%-38s %s\n", "sockethide-off", "disable any (tcp or udp) socket hiding");
-    printf("%-38s %s\n", "backdoor <execve_command>", "exec a command as root");
-    printf("%-38s %s\n", "shell", "obtain a shell as root");
-    printf("%-38s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or TTY (1)");
-    printf("%-38s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
-    printf("%-38s %s\n", "inputlogging <ip> <port>", "intercept {P,T}TY input and send it to <ip>:<port>");
-    printf("%-38s %s\n", "inputlogging-off", "disable input logging");
+    printf("%-42s %s\n", "help", "this message");
+    printf("%-42s %s\n", "ping", "send an echo request to the rootkit");
+    printf("%-42s %s\n", "unload", "gracefully unload the rootkit module");
+    printf("%-42s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
+    printf("%-42s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
+    printf("%-42s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
+    printf("%-42s %s\n", "socket <hide | unhide> <tcp | udp> <port>", "{,un}hide a tcp or udp with the given port");
+    printf("%-42s %s\n", "sockethide-off", "disable any (tcp or udp) socket hiding");
+    printf("%-42s %s\n", "backdoor <execve_command>", "exec a command as root");
+    printf("%-42s %s\n", "shell", "obtain a shell as root");
+    printf("%-42s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or TTY (1)");
+    printf("%-42s %s\n", "backdoor-off", "disable any (read or tty) backdoor");
+    printf("%-42s %s\n", "inputlogging <ip> <port>", "intercept {P,T}TY input and send it to <ip>:<port>");
+    printf("%-42s %s\n", "inputlogging-off", "disable input logging");
 }
