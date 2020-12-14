@@ -164,13 +164,13 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/smap.h#L58
 static inline void
-enable_smap(void) {
+disable_smap(void) {
     alternative("", __stringify(__ASM_STAC), X86_FEATURE_SMAP);
 }
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/smap.h#L52
 static inline void
-disable_smap(void) {
+enable_smap(void) {
     alternative("", __stringify(__ASM_CLAC), X86_FEATURE_SMAP);
 }
 
