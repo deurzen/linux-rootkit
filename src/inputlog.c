@@ -80,7 +80,7 @@ send_udp(pid_t pid, struct file *file, char *buf, int buflen)
         session_hdrlen = build_header(session_buf, pid, file);
         session_body = session_buf + session_hdrlen;
 
-        // escape characters are expanded to their literal chararcter form
+        // escape characters are expanded to their literal character form
         session_buflen = expand_escape_chars(session_body, buf, buflen);
         session_buflen += session_hdrlen + 1;
 
