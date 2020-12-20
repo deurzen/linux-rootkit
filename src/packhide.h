@@ -18,6 +18,8 @@ typedef struct ip_list {
 
 extern ip_list_t hidden_ips;
 
+void clear_hidden_ips(void);
+
 void hide_packets(void);
 void unhide_packets(void);
 
