@@ -18,7 +18,7 @@ static char *movSignExtended = "\x48\xc7\xc7";
 static char *callNearRelative = "\xE8";
 
 static unsigned long read_msr(unsigned int);
-static char *find_do_syscall_64(char *lstar_addr);
+static void *find_do_syscall_64(char *lstar_addr);
 
 void g7_syscall_64(unsigned long, struct pt_regs *);
 void (*do_syscall_64)(unsigned long, struct pt_regs *);
@@ -28,7 +28,7 @@ test_lstar(void)
 {   
     char *lstar_addr = (char *)read_msr(MSR_LSTAR);
     
-    char *syscall64_base = find_do_syscall_64(lstar_addr);
+    do_syscall_64 = find_do_syscall_64(lstar_addr);
 }
 
 //Only use with multiples of 16..
@@ -55,7 +55,7 @@ sign_extend(int n)
     return n;
 }
 
-static char *
+static void *
 find_do_syscall_64(char *lstar_addr)
 {
     //Step 1: get address of stage 2 trampoline
@@ -81,12 +81,11 @@ find_do_syscall_64(char *lstar_addr)
 
     syscall64_off = sign_extend(syscall64_off);
 
-    unsigned long do_syscall_64_addr = (unsigned long)syscall64_off_ptr + syscall64_off;
-    hexdump((char *)do_syscall_64_addr, 128);
+    //Offset relative to _next_ instruction
+    syscall64_off += 5;
 
-    DEBUG_INFO("g7_syscall_64 at %lx\n", (unsigned long)g7_syscall_64);
-
-    return NULL;
+    //Store correct address of do_syscall_64
+    return (void *)syscall64_off_ptr + syscall64_off;
 }
 
 void
