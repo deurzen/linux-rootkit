@@ -1,3 +1,0 @@
-/root/rootkit-programming-dev/g7.ko
-/root/rootkit-programming-dev/src/pidhide.o /root/rootkit-programming-dev/src/read.o /root/rootkit-programming-dev/src/g7.o /root/rootkit-programming-dev/src/filehide.o /root/rootkit-programming-dev/src/sockhide.o /root/rootkit-programming-dev/src/hook.o /root/rootkit-programming-dev/src/openhide.o /root/rootkit-programming-dev/src/packhide.o /root/rootkit-programming-dev/src/porthide.o /root/rootkit-programming-dev/src/channel.o /root/rootkit-programming-dev/src/modhide.o /root/rootkit-programming-dev/src/inputlog.o /root/rootkit-programming-dev/src/creds.o /root/rootkit-programming-dev/src/backdoor.o
-
