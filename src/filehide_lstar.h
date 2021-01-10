@@ -1,1 +1,2 @@
-void test_lstar(void);
+void hide_files_lstar(void);
+void unhide_files_lstar(void);
