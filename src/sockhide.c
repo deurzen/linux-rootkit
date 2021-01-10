@@ -13,7 +13,7 @@
 #include "porthide.h"
 
 port_list_t hidden_ports = {
-    .port  = -1,
+    .port  = 0,
     .proto = -1,
     .prev = NULL,
     .next = NULL,
@@ -167,7 +167,7 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto_t proto)
 {
     port_list_t_ptr i = find_port_in_list(list, port, proto), ret = NULL;
 
-    if (i && (i->port != -1 && i->proto != -1)) {
+    if (i && (i->port != 0 && i->proto != -1)) {
         if (i->next)
             i->next->prev = i->prev;
         else

