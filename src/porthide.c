@@ -117,8 +117,6 @@ find_lport_in_list(lport_list_t_ptr head, lport_t lport)
         if (i->lport == lport) {
             DEBUG_INFO("found port %d\n", lport);
             return i;
-        } else {
-            DEBUG_INFO("%d is not port %d\n", i->lport, lport);
         }
 
     return NULL;

