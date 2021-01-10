@@ -80,7 +80,7 @@ unhide_files_lstar(void)
         enable_protection();
 
         if ((atomic_read(&syscall64_count)) > 0)
-            msleep(10000);
+            msleep(1000);
     }
 }
 
