@@ -173,8 +173,12 @@ find_knock_in_list(knock_list_t_ptr head, ip_t ip, ip_version version)
 {
     knock_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && (version == -1 || i->version == version))
+        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && (version == -1 || i->version == version)) {
+            int knock;
+            memcpy(&knock, ip, 4);
+            DEBUG_INFO("found ip %0X in list\n", knock);
             return i;
+        }
 
     return NULL;
 }
