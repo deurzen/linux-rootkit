@@ -207,6 +207,7 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
 check_port:
             if (list_contains_lport(&hidden_lports, src_port))
                 if (tcphdr->syn) {
+                    DEBUG_NOTICE("[g7] blocked handshake request on port %d\n", src_port);
                     tcphdr->syn = 0;
                     tcphdr->ack = 0;
                     tcphdr->rst = 1;
