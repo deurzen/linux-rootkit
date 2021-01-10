@@ -41,7 +41,7 @@ static struct file_operations g7_fops =
 
 rootkit_t rootkit = {
     .hiding_module  = true,
-    .hiding_files   = true,
+    .hiding_files   = false,
     .hiding_open    = true,
     .hiding_pids    = true,
     .hiding_sockets = true,
