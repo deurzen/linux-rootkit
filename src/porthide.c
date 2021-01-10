@@ -86,16 +86,18 @@ stage3_knock(lport_t port)
 void
 clear_hidden_lports(void)
 {
-    lport_list_t_ptr i = ips_stage1_tail;
+    lport_list_t_ptr i;
+
+    i = ips_stage1_tail;
     while ((i = remove_knock_from_list(i, i->lport)));
 
-    lport_list_t_ptr i = ips_stage2_tail;
+    i = ips_stage2_tail;
     while ((i = remove_knock_from_list(i, i->lport)));
 
-    lport_list_t_ptr i = ips_stage3_tail;
+    i = ips_stage3_tail;
     while ((i = remove_knock_from_list(i, i->lport)));
 
-    lport_list_t_ptr i = hidden_lports_tail;
+    i = hidden_lports_tail;
     while ((i = remove_lport_from_list(i, i->lport)));
 }
 
