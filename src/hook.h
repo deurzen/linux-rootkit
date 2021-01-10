@@ -16,6 +16,7 @@ typedef struct {
 extern atomic_t read_install_count;
 extern atomic_t getdents_install_count;
 extern atomic_t packet_rcv_install_count;
+extern atomic_t syscall64_install_count;
 
 extern atomic_t read_count;
 extern atomic_t tty_read_count;

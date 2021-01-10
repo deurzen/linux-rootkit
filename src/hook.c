@@ -34,6 +34,7 @@ atomic_t read_install_count;
 atomic_t getdents_install_count;
 atomic_t tty_read_install_count;
 atomic_t packet_rcv_install_count;
+atomic_t syscall64_install_count;
 
 atomic_t read_count;
 atomic_t getdents_count;
@@ -66,6 +67,7 @@ init_hooks(void)
     atomic_set(&tty_read_install_count, 0);
     atomic_set(&getdents_install_count, 0);
     atomic_set(&packet_rcv_install_count, 0);
+    atomic_set(&syscall64_install_count, 0);
 
     atomic_set(&read_count, 0);
     atomic_set(&tty_read_count, 0);
