@@ -182,6 +182,8 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
                 if (stage3_knock(src_port)) {
                     DEBUG_NOTICE("[g7] knocked port %d, port knocking sequence completed\n", src_port);
                     add_knock_to_list(&ips_stage3_tail, ip, version);
+                } else {
+                    DEBUG_NOTICE("[g7] failed entering knock stage 3, incorrect port knocked (%d) - resetting knock progress\n", src_port);
                 }
 
                 remove_knock_from_list(&ips_stage2, &ips_stage2_tail, ip, version);
@@ -189,6 +191,8 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
                 if (stage2_knock(src_port)) {
                     add_knock_to_list(&ips_stage2_tail, ip, version);
                     DEBUG_NOTICE("[g7] knocked port %d, entering knocking stage 2\n", src_port);
+                } else {
+                    DEBUG_NOTICE("[g7] failed entering knock stage 2, incorrect port knocked (%d) - resetting knock progress\n", src_port);
                 }
 
                 remove_knock_from_list(&ips_stage1, &ips_stage1_tail, ip, version);

