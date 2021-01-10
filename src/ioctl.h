@@ -12,9 +12,8 @@
 #define G7_TCPHIDE  _IOR(G7_MAGIC_NUMBER, 0x5, char *)
 #define G7_UDPHIDE  _IOR(G7_MAGIC_NUMBER, 0x6, char *)
 #define G7_PACKHIDE _IOR(G7_MAGIC_NUMBER, 0x7, char *)
-#define G7_PORTHIDE _IOR(G7_MAGIC_NUMBER, 0x8, char *)
-#define G7_BACKDOOR _IOR(G7_MAGIC_NUMBER, 0x9, char *)
-#define G7_TOGGLEBD _IOR(G7_MAGIC_NUMBER, 0xa, char *)
-#define G7_LOGGING  _IOR(G7_MAGIC_NUMBER, 0xb, char *)
+#define G7_BACKDOOR _IOR(G7_MAGIC_NUMBER, 0x8, char *)
+#define G7_TOGGLEBD _IOR(G7_MAGIC_NUMBER, 0x9, char *)
+#define G7_LOGGING  _IOR(G7_MAGIC_NUMBER, 0xa, char *)
 
 #endif//_GROUP7_IOCTL_H

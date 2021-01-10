@@ -9,4 +9,11 @@
 #define DEBUG_NOTICE(...) do{} while (0)
 #endif
 
+typedef enum {
+    v4,
+    v6
+} ip_version;
+
+typedef u8 ip_t[16];
+
 #endif//_GROUP7_COMMON_H

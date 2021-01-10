@@ -1,12 +1,7 @@
 #ifndef _GROUP7_PACKHIDE_H
 #define _GROUP7_PACKHIDE_H
 
-typedef enum {
-    v4,
-    v6
-} ip_version;
-
-typedef u8 ip_t[16];
+#include "common.h"
 
 typedef struct ip_list *ip_list_t_ptr;
 typedef struct ip_list {
