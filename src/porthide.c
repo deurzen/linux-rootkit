@@ -101,10 +101,8 @@ find_lport_in_list(lport_list_t_ptr head, lport_t lport)
 {
     lport_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (i->lport == lport) {
-            DEBUG_INFO("found port %d\n", lport);
+        if (i->lport == lport)
             return i;
-        }
 
     return NULL;
 }
@@ -133,7 +131,6 @@ remove_lport_from_list(lport_list_t_ptr list, lport_t lport)
     lport_list_t_ptr i = find_lport_in_list(list, lport), ret = NULL;
 
     if (i && (i->lport != -1)) {
-        DEBUG_INFO("remove_lport_from_list: removing lport %d\n", lport);
         if (i->next)
             i->next->prev = i->prev;
         else
