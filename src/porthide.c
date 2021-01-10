@@ -62,7 +62,7 @@ hide_lport(lport_t lport)
 void
 unhide_lport(lport_t lport)
 {
-    remove_lport_from_list(hidden_lports_tail, lport);
+    remove_lport_from_list(&hidden_lports, lport);
 }
 
 bool

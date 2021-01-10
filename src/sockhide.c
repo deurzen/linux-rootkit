@@ -122,7 +122,7 @@ unhide_port(port_t port, proto_t proto)
 void
 clear_hidden_ports(void)
 {
-    i = hidden_ports_tail;
+    port_list_t_ptr i = hidden_ports_tail;
     while ((i = remove_port_from_list(i, i->port, i->proto)));
 }
 

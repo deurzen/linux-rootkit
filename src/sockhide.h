@@ -28,6 +28,7 @@ void unhide_port(port_t, proto_t);
 
 asmlinkage ssize_t g7_recvmsg(struct pt_regs *);
 
+void clear_hidden_ports(void);
 bool list_contains_port(port_list_t_ptr, port_t, proto_t);
 port_list_t_ptr find_port_in_list(port_list_t_ptr, port_t, proto_t);
 port_list_t_ptr add_port_to_list(port_list_t_ptr, port_t, proto_t);
