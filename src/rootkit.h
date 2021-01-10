@@ -9,10 +9,16 @@ typedef enum {
     BD_TTY,
 } bd_state_t;
 
+typedef enum {
+    FH_OFF = 0,
+    FH_TABLE,
+    FH_LSTAR,
+} fh_state_t;
+
 typedef struct {
     sc_hook_t hooks[16];
     bool hiding_module;
-    bool hiding_files;
+    fh_state_t hiding_files;
     bool hiding_pids;
     bool hiding_open;
     bool hiding_sockets;
