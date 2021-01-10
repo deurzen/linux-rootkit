@@ -89,13 +89,13 @@ clear_hidden_lports(void)
     lport_list_t_ptr i;
 
     i = ips_stage1_tail;
-    while ((i = remove_knock_from_list(i, i->lport)));
+    while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
     i = ips_stage2_tail;
-    while ((i = remove_knock_from_list(i, i->lport)));
+    while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
     i = ips_stage3_tail;
-    while ((i = remove_knock_from_list(i, i->lport)));
+    while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
     i = hidden_lports_tail;
     while ((i = remove_lport_from_list(i, i->lport)));
