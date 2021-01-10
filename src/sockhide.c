@@ -168,7 +168,6 @@ remove_port_from_list(port_list_t_ptr list, port_t port, proto_t proto)
     port_list_t_ptr i = find_port_in_list(list, port, proto), ret = NULL;
 
     if (i && (i->port != -1 && i->proto != -1)) {
-        DEBUG_INFO("remove_port_from_list: removing port %d\n", port);
         if (i->next)
             i->next->prev = i->prev;
         else
