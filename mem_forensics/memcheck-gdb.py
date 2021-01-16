@@ -73,11 +73,36 @@ class RkKaslrOffset (gdb.Command):
 
         print(f"address for symbol `{self.symbol}` inside object file \"{file}\" is {obj_addr}")
 
+        print(f"looking up addresses for symbol `{self.symbol}`")
+
         v_addr = self.get_v_addr()
+
+        if v_addr is None:
+            print(f"could not retrieve virtual address address for symbol `{self.symbol}`")
+            return None
+
         p_addr = self.get_p_addr(v_addr)
 
-        print(f"looking up addresses for symbol `{self.symbol}`")
+        if p_addr is None:
+            print(f"could not retrieve physical address address for symbol `{self.symbol}`")
+            return None
+
         print(f"found virtual address {v_addr} with associated physical address {p_addr}")
+
+        v_addr = v_addr.strip()
+        p_addr = p_addr.strip()
+
+        v_bytes = gdb.execute(f"x/8xb {v_addr}", to_string=True).split()[-7:]
+        p_bytes = gdb.execute(f"monitor xp/8xb {p_addr}", to_string=True).split()[-7:]
+
+        print(f"8 bytes of memory read starting from virtual address {v_addr}: {v_bytes}")
+        print(f"8 bytes of memory read starting from physical address {p_addr}: {p_bytes}")
+
+        print(f"bytes read are {'equal' if v_bytes == p_bytes else 'different'}")
+
+        print()
+
+        print(f"calculating offsets relating to object file address {obj_addr}")
 
         v_off = self.get_off(v_addr)
         p_off = self.get_off(p_addr)
