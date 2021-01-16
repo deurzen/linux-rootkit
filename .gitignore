@@ -1,0 +1,17 @@
+/.*.ko.cmd
+/*.img
+/.*.mod.cmd
+/.*.mod.o.cmd
+/.*.o.cmd
+/Module.symvers
+/*.ko
+/*.mod
+/*.mod.c
+/*.mod.o
+/*.o
+/modules.order
+/src/.*.o.cmd
+/src/*.o
+/rkctl
+/tags
+/*.o.d
