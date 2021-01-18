@@ -2,8 +2,7 @@ import os
 import re
 
 v_off_g = 0
-
-file = None
+file_g = None
 
 class RkLoadSymbols (gdb.Command):
     """Determine the KASLR-Offset and map the symbols."""
@@ -34,7 +33,7 @@ class RkLoadSymbols (gdb.Command):
             return None
 
     def get_v_off (self, arg):
-        global file
+        global file_g
         global v_off_g
 
         sym_addr = get_symbol_address(arg, self.symbol)
@@ -42,7 +41,7 @@ class RkLoadSymbols (gdb.Command):
         if sym_addr is None:
             return None
 
-        file = arg
+        file_g = arg
 
         #minimal assumption: user is at login prompt
         try:
@@ -71,16 +70,16 @@ class RkKaslrOffset (gdb.Command):
 
     # assuming rk-load-symbols has already been run
     def invoke (self, arg, from_tty):
-        global file
+        global file_g
 
-        if file is None:
+        if file_g is None:
             print("no object file has been read in to calculate offsets, please run `rk-load-symbols` first.")
             return None
 
-        self.obj_addr = get_symbol_address(file, self.symbol)
+        self.obj_addr = get_symbol_address(file_g, self.symbol)
         obj_addr = hex(self.obj_addr)
 
-        print(f"address for symbol `{self.symbol}` inside object file \"{file}\" is {obj_addr}")
+        print(f"address for symbol `{self.symbol}` inside object file \"{file_g}\" is {obj_addr}")
 
         print(f"looking up addresses for symbol `{self.symbol}`")
 
@@ -137,7 +136,7 @@ class RkKaslrOffset (gdb.Command):
 
 
     def get_off (self, addr):
-        global file
+        global file_g
 
         if self.obj_addr is None:
             return None
@@ -164,23 +163,26 @@ class RKSyscallCheck (gdb.Command):
 
   def invoke (self, arg, from_tty):
     global v_off_g
-    global file
+    global file_g
 
     if v_off_g == 0:
-      print("KASLR offset is 0! Run rk-load-symbols first. If KASLR is enabled, just run add-symbol-file <..>")
+      print("KASLR offset is 0 - run `rk-load-symbols` first")
+      print("if KASLR is enabled, just run `add-symbol-file <file>`")
       return None
-    
-    print("This might take a while..\nExits silently when no tampering has been detected")
+
+    print("this might take a while")
+    print("exits silently when no tampering has been detected")
+
     self.load_syscall_table()
     self.check_syscall_table()
 
   def load_syscall_table(self):
-    global file
+    global file_g
 
-    ret = get_symbol_address(file, self.symbol)
+    ret = get_symbol_address(file_g, self.symbol)
     if ret is None:
       return None
-    
+
     self.sys_call_table = ret + v_off_g
 
   def check_syscall_table(self):
@@ -194,7 +196,7 @@ class RKSyscallCheck (gdb.Command):
       addr = re.search(r"(0x\w+)", cur)
 
       if addr is None:
-        print("Error parsing gdb x output..")
+        print("error parsing gdb x output..")
         continue
 
       addr = int(addr.group(1), 16)
@@ -202,19 +204,20 @@ class RKSyscallCheck (gdb.Command):
       self.check_integrity(l, addr)
 
   def check_integrity(self, symbol, addr):
-    global file
+    global file_g
     global v_off_g
-    
-    should = get_symbol_address(file, symbol)
-    
+
+    should = get_symbol_address(file_g, symbol)
+
     if should is None:
       return None
 
     should += v_off_g
 
     if should != addr:
-      print(f"syscall table compromised for {symbol}! Expected: {hex(should)}, table points to {hex(addr)}")
-    
+      print(f"syscall table compromised for {symbol}!")
+      print(f"expected: {hex(should)}, table points to: {hex(addr)}")
+
 
 
 RKSyscallCheck ()
