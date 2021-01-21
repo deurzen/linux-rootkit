@@ -1,6 +1,6 @@
 import os
 import re
-import io
+import subprocess
 from elftools.elf import elffile
 
 v_off_g = 0
@@ -588,6 +588,10 @@ class RkCheckFunctions(gdb.Command):
 
     f = None
     s = None
+    d = None
+
+    symbols = None
+    headers = None
 
     def __init__(self):
         super(RkCheckFunctions, self).__init__("rk-check-functions", gdb.COMMAND_USER, gdb.COMMAND_DATA)
@@ -615,22 +619,30 @@ class RkCheckFunctions(gdb.Command):
 
         for symbol in self.s.iter_symbols():
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
-                # print(symbol.name, symbol.entry["st_info"]["type"], symbol.entry["st_size"], hex(symbol.entry["st_value"]))
+                # just to test
                 if symbol.name == "ksys_getdents64" or symbol.name == "__x64_sys_getdents64":
-                    self.compare_function(symbol.name, symbol.entry["st_size"], symbol.entry["st_value"])
+                    for segment in self.f.iter_segments():
+                        # if segment.header.p_type == "PT_LOAD":
+                        self.d = segment.data()
+                        self.compare_function(symbol.name, symbol.entry["st_size"], symbol.entry["st_value"])
 
     # TODO: compare `size` number of bytes starting from `value` in ELF
     #       with `size` number of bytes starting from address of symbol
     #       on running machine
     # NOTE: what if first `size` bytes are the same, but after that,
     #       malicious code is defined on running machine?
-    # for segment in self.f.iter_segments():
-    #     print(segment.data()[:-1])
     def compare_function(self, name, size, value):
-        print(name, size, hex(value))
         addr = self.get_v_addr(name)
-        live_bytes = gdb.execute(f"xbfunc {addr} {size}", to_string=True).split()
+        # read in live bytes from start address of the function + 5B (to offset the call to __fentry__)
+        live_bytes = gdb.execute(f"xbfunc {hex(int(addr, 16) + 5)} {size - 5}", to_string=True).split()
+        live_bytes = "".join(live_bytes)
+        live_bytes = bytes.fromhex(live_bytes)
         print(live_bytes)
+
+        name = str.encode(name)
+        print(name)
+        index = self.d.find(name)
+        print(index)
 
     def get_v_addr(self, symbol):
         try:
