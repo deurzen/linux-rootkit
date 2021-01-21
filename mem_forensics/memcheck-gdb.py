@@ -1,5 +1,6 @@
 import os
 import re
+import io
 from elftools.elf import elffile
 
 v_off_g = 0
@@ -74,7 +75,7 @@ class RkKaslrOffset(gdb.Command):
         global file_g
 
         if file_g is None:
-            print("no object file has been read in to calculate offsets, please run `rk-load-symbols` first.")
+            print("no object file has been read in to calculate offsets, please run `rk-load-symbols` first")
             return None
 
         self.obj_addr = get_symbol_address(file_g, self.symbol)
@@ -197,7 +198,7 @@ class RKSyscallCheck(gdb.Command):
       addr = re.search(r"(0x\w+)", cur)
 
       if addr is None:
-        print("error parsing gdb x output..")
+        print("error parsing gdb x output")
         continue
 
       addr = int(addr.group(1), 16)
@@ -587,7 +588,6 @@ class RkCheckFunctions(gdb.Command):
 
     f = None
     s = None
-    d = None
 
     def __init__(self):
         super(RkCheckFunctions, self).__init__("rk-check-functions", gdb.COMMAND_USER, gdb.COMMAND_DATA)
@@ -597,25 +597,48 @@ class RkCheckFunctions(gdb.Command):
         global file_g
 
         if file_g is None:
-            print("no object file has been read in to calculate offsets, please run `rk-load-symbols` first.")
+            print("no object file has been read in to calculate offsets, please run `rk-load-symbols` first")
+            return None
+
+        found = False
+        for root, _, files in os.walk("."):
+            if "xbfunc.gdb" in files:
+                found = True
+                gdb.execute(f'source {os.path.join(root, "xbfunc.gdb")}')
+
+        if not found:
+            print("could not locate the `xbfunc.gdb` file that is required to perform the function check")
             return None
 
         self.f = elffile.ELFFile(open(file_g, "rb"))
         self.s = self.f.get_section_by_name(".symtab")
-        self.d = self.f.get_section_by_name(".data")
 
-        for i in self.s.iter_symbols():
-            if i.entry["st_info"]["type"] == "STT_FUNC":
-                print(i.name, i.entry["st_info"]["type"], i.entry["st_size"], hex(i.entry["st_value"]))
-                self.compare_function(i.name, i.entry["st_size"], i.entry["st_value"])
+        for symbol in self.s.iter_symbols():
+            if symbol.entry["st_info"]["type"] == "STT_FUNC":
+                # print(symbol.name, symbol.entry["st_info"]["type"], symbol.entry["st_size"], hex(symbol.entry["st_value"]))
+                if symbol.name == "ksys_getdents64" or symbol.name == "__x64_sys_getdents64":
+                    self.compare_function(symbol.name, symbol.entry["st_size"], symbol.entry["st_value"])
 
+    # TODO: compare `size` number of bytes starting from `value` in ELF
+    #       with `size` number of bytes starting from address of symbol
+    #       on running machine
+    # NOTE: what if first `size` bytes are the same, but after that,
+    #       malicious code is defined on running machine?
+    # for segment in self.f.iter_segments():
+    #     print(segment.data()[:-1])
     def compare_function(self, name, size, value):
-        # TODO: compare `size` number of bytes starting from `value` in ELF
-        #       with `size` number of bytes starting from address of symbol
-        #       on running machine
-        # NOTE: what if first `size` bytes are the same, but after that,
-        #       malicious code is defined on running machine?
-        pass
+        print(name, size, hex(value))
+        addr = self.get_v_addr(name)
+        live_bytes = gdb.execute(f"xbfunc {addr} {size}", to_string=True).split()
+        print(live_bytes)
+
+    def get_v_addr(self, symbol):
+        try:
+            return gdb.execute(f"p {symbol}", to_string=True).split(" ")[-2]
+        except:
+            print("error executing `where`, is the VM running?")
+            return None
+
 
 
 RkCheckFunctions()
