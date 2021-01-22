@@ -625,8 +625,10 @@ class RkCheckFunctions(gdb.Command):
                 size = symbol.entry["st_size"]
                 value = symbol.entry["st_value"]
 
-                if name is not None:
-                    self.compare_function(name, size, value)
+                if name is None or ".cold." in name or ".part." in name or ".constprop." in name:
+                    continue
+
+                self.compare_function(name, size, value)
 
     # TODO: compare `size` number of bytes starting from `value` in ELF
     #       with `size` number of bytes starting from address of symbol
@@ -642,7 +644,7 @@ class RkCheckFunctions(gdb.Command):
 
         # read in live bytes from start address of the function + 5B (to offset the call to __fentry__)
         live_bytes = gdb.execute(f"xbfunc {addr} {size}", to_string=True).split()
-        objdump = subprocess.check_output(f"objdump --insn-width 1 -z --disassemble={name} {file_g}", shell=True).split(b"\n")[:-1]
+        objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True).split(b"\n")[:-1]
 
         start = None
         for i, s in enumerate(objdump):
@@ -661,26 +663,29 @@ class RkCheckFunctions(gdb.Command):
         if end is not None:
             objdump = objdump[:end]
 
-        # callq takes up 5 bytes, remove those from live and ELF bytes to compare (temp fix)
-        exclude = []
-        for i, s in enumerate(objdump):
-            if b"\tcallq" in s:
-                exclude.append(i)
-                exclude.append(i + 1)
-                exclude.append(i + 2)
-                exclude.append(i + 3)
-                exclude.append(i + 4)
+        # exclude_objdump = []
+        # for i, s in enumerate(objdump):
+        #     bytes_start = s.decode(sys.stdout.encoding).find(':')
+        #     if b"<" in s and b">" in s or b"0x" in s or b"ffffff" in s[bytes_start:]:
+        #         exclude_objdump.append(i)
 
-        live_bytes = [live_byte for i, live_byte in enumerate(live_bytes) if i not in exclude]
-        live_bytes = "".join(live_bytes)
+        # exclude_live_bytes = []
+        # for i in exclude_objdump:
+        #     bytes = objdump[i].split(b"\t")[1]
+        #     bytes = bytes.strip().split(b" ")
+        #     for j in range(len(bytes)):
+        #         exclude_live_bytes.append(i + j)
 
-        objdump = [elf_byte for i, elf_byte in enumerate(objdump) if i not in exclude]
+        # objdump = [elf_byte for i, elf_byte in enumerate(objdump) if i not in exclude_objdump]
         objdump = [line.split(b"\t") for line in objdump]
 
-        elf_bytes = [line[1].decode(sys.stdout.encoding).strip() for line in objdump]
+        # live_bytes = [live_byte for i, live_byte in enumerate(live_bytes) if i not in exclude_live_bytes]
+        live_bytes = "".join(live_bytes)
+
+        elf_bytes = [line[1].decode(sys.stdout.encoding).strip().replace(' ', '') for line in objdump]
         elf_bytes = "".join(elf_bytes)
 
-        int3_chain = ''.join([c * len(live_bytes) for c in "c"])
+        int3_chain = ''.join('c' * len(live_bytes))
         if live_bytes == int3_chain:
             return None
 
