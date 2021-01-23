@@ -635,10 +635,7 @@ class RkCheckFunctions(gdb.Command):
                 continue
 
             self.compare_function(name, size, value)
-
-        print(f"Mismatches: {self.i}")
-
-    i = 0
+            
     def compare_function(self, name, size, value):
         addr = self.get_v_addr(name)
 
@@ -693,7 +690,9 @@ class RkCheckFunctions(gdb.Command):
             return None
 
         if live_bytes != elf_bytes:
-            self.i = self.i + 1
+            print("x", end='', flush=True)
+        else:
+            print("o", end='', flush=True)
 
     def get_v_addr(self, symbol):
         try:
