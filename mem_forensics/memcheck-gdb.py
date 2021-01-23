@@ -591,7 +591,7 @@ class RkCheckFunctions(gdb.Command):
     symbols = None
     headers = None
 
-    #Key: symbol, value: range for exclude bytes
+    #Key: symbol, value: list of ranges for exclude bytes
     altinstr_dict = {}
     paravirt_dict = {}
 
@@ -667,7 +667,10 @@ class RkCheckFunctions(gdb.Command):
             else:
                 value = range(replacementlen)
 
-            self.altinstr_dict[key] = value
+            if key in self.altinstr_dict:
+                self.altinstr_dict[key].append(value)
+            else:
+                self.altinstr_dict[key] = [value]
 
             i = i + alt_instr_sz
 
