@@ -617,12 +617,12 @@ class RkCheckFunctions(gdb.Command):
             return None
 
         self.f = elffile.ELFFile(open(file_g, "rb"))
-        self.s = self.f.get_section_by_name(".parainstructions")
+        self.s = self.f.get_section_by_name(".symtab")
 
         print("this might take a while")
         print("exits silently when no tampering has been detected")
 
-        print(self.s.data().hex())
+        self.fill_altinstr_dict()
 
     def compare_function(self, name, size, value):
         print("nop")
@@ -636,14 +636,25 @@ class RkCheckFunctions(gdb.Command):
 
     def fill_altinstr_dict(self):
         global file_g
+        global v_off_g
 
-        # alt_instr layout (read from elf section .altinstructions):
-        # .long offset          <-- Adress to instructions we ignore: addr = (__alt_instructions (symbol) + cur (offset into .altinstructions)) + offset + v_off
+        # alt_instr layout (read from elf section .altinstructions, size: 13 bytes):
+        # .long offset          <-- Adress to instructions we ignore: addr = (__alt_instructions + cur (offset into .altinstructions)) + offset + v_off_g
         # .long repl_offset
         # .word cpuid
-        # .byte instrlen
-        # .byte replacementlen
+        # .byte instrlen        
+        # .byte replacementlen  <-- How many instructions we skip
         # .byte padlen
+
+        sec = self.f.get_section_by_name(".altinstructions")
+        __alt_instructions = 0
+        data = sec.data()
+
+        i = 0
+        while i < sec["sh_size"]:
+            addr = (sec["sh_addr"] + i) + int.from_bytes(data[i:(i + 4)], byteorder="little", signed=True) + v_off_g
+            print(f"Got addr {hex(addr)}\n")
+            i = i + 13
 
 
 RkCheckFunctions()
