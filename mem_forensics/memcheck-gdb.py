@@ -580,8 +580,6 @@ syscalls = [
     '__x64_sys_rseq'
 ]
 
-
-
 class RkCheckFunctions(gdb.Command):
     """Check the integrity of the functions in the kernel."""
 
@@ -623,6 +621,7 @@ class RkCheckFunctions(gdb.Command):
         print("exits silently when no tampering has been detected")
 
         self.fill_altinstr_dict()
+        self.fill_paravirt_dict()
 
     def compare_function(self, name, size, value):
         print("nop")
@@ -674,6 +673,46 @@ class RkCheckFunctions(gdb.Command):
 
             i = i + alt_instr_sz
 
-        print(self.altinstr_dict)
+
+    def fill_paravirt_dict(self):
+        global file_g
+        global v_off_g
+
+        # paravirt_patch_site layout (read from elf section .parainstructions, size with padding: 16 bytes):
+        # .quad instr          <-- Adress to instruction = instr + v_off_G
+        # .byte instrtype
+        # .byte len
+        # .short clobbers
+        # 4 byte padding
+
+        sec = self.f.get_section_by_name(".parainstructions")
+        data = sec.data()
+
+        paravirt_patch_site_sz = 16
+        len_off = 9
+
+        i = 0
+        while i < sec["sh_size"]:
+            addr = int.from_bytes(data[i:(i + 8)], byteorder="little", signed=False) + v_off_g
+            _len = int.from_bytes(data[(i + len_off):(i + len_off + 1)], byteorder="little", signed=False)
+
+            info = gdb.execute(f"info symbol {addr}", to_string=True).split(" ")
+
+            key = info[0]
+
+            if info[1] == "+":
+                t = int(info[2])
+                value = range(t, t + _len)
+            else:
+                value = range(_len)
+
+            if key in self.paravirt_dict:
+                self.paravirt_dict[key].append(value)
+            else:
+                self.paravirt_dict[key] = [value]
+
+            i = i + paravirt_patch_site_sz
+
+        print(self.paravirt_dict)
 
 RkCheckFunctions()
