@@ -582,7 +582,6 @@ syscalls = [
 
 
 
-
 class RkCheckFunctions(gdb.Command):
     """Check the integrity of the functions in the kernel."""
 
@@ -591,6 +590,10 @@ class RkCheckFunctions(gdb.Command):
 
     symbols = None
     headers = None
+
+    #Key: function name, value: list of (addr, len) tuples
+    altinstr_dict = {}
+    paravirt_dict = {}
 
     def __init__(self):
         super(RkCheckFunctions, self).__init__("rk-check-functions", gdb.COMMAND_USER, gdb.COMMAND_DATA)
@@ -614,84 +617,15 @@ class RkCheckFunctions(gdb.Command):
             return None
 
         self.f = elffile.ELFFile(open(file_g, "rb"))
-        self.s = self.f.get_section_by_name(".symtab")
+        self.s = self.f.get_section_by_name(".parainstructions")
 
         print("this might take a while")
         print("exits silently when no tampering has been detected")
 
-        for symbol in self.s.iter_symbols():
-            if symbol.entry["st_info"]["type"] == "STT_FUNC":
-                name = symbol.name
-                size = symbol.entry["st_size"]
-                value = symbol.entry["st_value"]
+        print(self.s.data().hex())
 
-                if name is None or ".cold." in name or ".part." in name or ".constprop." in name:
-                    continue
-
-                self.compare_function(name, size, value)
-
-    # TODO: compare `size` number of bytes starting from `value` in ELF
-    #       with `size` number of bytes starting from address of symbol
-    #       on running machine
-    # NOTE: what if first `size` bytes are the same, but after that,
-    #       malicious code is defined on running machine?
     def compare_function(self, name, size, value):
-        addr = self.get_v_addr(name)
-
-        if addr is None:
-            print(f"could not retrieve virtual address address for symbol `{name}`")
-            return None
-
-        # read in live bytes from start address of the function + 5B (to offset the call to __fentry__)
-        live_bytes = gdb.execute(f"xbfunc {addr} {size}", to_string=True).split()
-        objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True).split(b"\n")[:-1]
-
-        start = None
-        for i, s in enumerate(objdump):
-            if name in s.decode(sys.stdout.encoding):
-                start = i
-                break
-
-        objdump = objdump[start+1:]
-
-        end = None
-        for i, s in enumerate(objdump):
-            if b'' == s:
-                end = i
-                break
-
-        if end is not None:
-            objdump = objdump[:end]
-
-        # exclude_objdump = []
-        # for i, s in enumerate(objdump):
-        #     bytes_start = s.decode(sys.stdout.encoding).find(':')
-        #     if b"<" in s and b">" in s or b"0x" in s or b"ffffff" in s[bytes_start:]:
-        #         exclude_objdump.append(i)
-
-        # exclude_live_bytes = []
-        # for i in exclude_objdump:
-        #     bytes = objdump[i].split(b"\t")[1]
-        #     bytes = bytes.strip().split(b" ")
-        #     for j in range(len(bytes)):
-        #         exclude_live_bytes.append(i + j)
-
-        # objdump = [elf_byte for i, elf_byte in enumerate(objdump) if i not in exclude_objdump]
-        objdump = [line.split(b"\t") for line in objdump]
-
-        # live_bytes = [live_byte for i, live_byte in enumerate(live_bytes) if i not in exclude_live_bytes]
-        live_bytes = "".join(live_bytes)
-
-        elf_bytes = [line[1].decode(sys.stdout.encoding).strip().replace(' ', '') for line in objdump]
-        elf_bytes = "".join(elf_bytes)
-
-        int3_chain = ''.join('c' * len(live_bytes))
-        if live_bytes == int3_chain:
-            return None
-
-        if live_bytes != elf_bytes:
-            print(f"function `{name} compromised, live bytes not equal to ELF bytes")
-            print(f"expected: {elf_bytes}, live: {live_bytes}")
+        print("nop")
 
     def get_v_addr(self, symbol):
         try:
@@ -700,6 +634,16 @@ class RkCheckFunctions(gdb.Command):
             print("error executing `where`, is the VM running?")
             return None
 
+    def fill_altinstr_dict(self):
+        global file_g
+
+        # alt_instr layout (read from elf section .altinstructions):
+        # .long offset          <-- Adress to instructions we ignore: addr = (__alt_instructions (symbol) + cur (offset into .altinstructions)) + offset + v_off
+        # .long repl_offset
+        # .word cpuid
+        # .byte instrlen
+        # .byte replacementlen
+        # .byte padlen
 
 
 RkCheckFunctions()
