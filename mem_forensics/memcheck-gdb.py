@@ -636,11 +636,13 @@ class RkCheckFunctions(gdb.Command):
 
             self.compare_function(name, size, value)
 
+        print(f"Mismatches: {self.i}")
+
+    i = 0
     def compare_function(self, name, size, value):
         addr = self.get_v_addr(name)
 
         if addr is None:
-            print(f"could not retrieve virtual address address for symbol `{name}`")
             return None
 
         # read in live bytes from start address of the function + 5B (to offset the call to __fentry__)
@@ -691,14 +693,12 @@ class RkCheckFunctions(gdb.Command):
             return None
 
         if live_bytes != elf_bytes:
-            print(f"function `{name} compromised, live bytes not equal to ELF bytes")
-            print(f"expected: {elf_bytes}, live: {live_bytes}")
+            self.i = self.i + 1
 
     def get_v_addr(self, symbol):
         try:
-            return gdb.execute(f"p {symbol}", to_string=True).split(" ")[-2]
+            return gdb.execute(f"x {symbol}", to_string=True).split(" ")[0]
         except:
-            print(f"error executing `p {symbol}`")
             return None
 
     def fill_altinstr_dict(self):
