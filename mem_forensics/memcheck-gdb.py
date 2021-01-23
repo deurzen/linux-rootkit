@@ -624,43 +624,54 @@ class RkCheckFunctions(gdb.Command):
 
         print("populating dictionaries...", end='', flush=True)
         self.fill_code_dict()
+        print(self.code_dict)
         self.fill_altinstr_dict()
+        # print(self.altinstr_dict)
         self.fill_paravirt_dict()
+        # print(self.paravirt_dict)
+        self.compare_functions()
         print(" done!")
 
     def fill_code_dict(self):
+        sym_i = 0
         for symbol in self.s.iter_symbols():
+            if sym_i == 100:
+                break
+
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
                 size = symbol.entry["st_size"]
             else:
                 continue
-        
+
             if name is None or ".cold." in name or ".part." in name or ".constprop." in name:
                 continue
-        
+
             addr = self.get_v_addr(name)
             if addr is None:
                 continue
 
-            objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True).split(b"\n")[:-1]
+            objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True)
+            objdump = objdump.split(b"\n")[:-1]
 
             start = None
-            for i, s in enumerate(objdump):
-                if name in s.decode(sys.stdout.encoding):
-                    start = i
-                    break
-
-            objdump = objdump[start+1:]
-
             end = None
+
             for i, s in enumerate(objdump):
-                if b'' == s:
-                    end = i
+                if start is not None:
+                    if end is None and s == b'':
+                        end = i
+                else:
+                    if name in s.decode(sys.stdout.encoding):
+                        start = i + 1
+
+                if start is not None and end is not None:
                     break
 
             if end is not None:
-                objdump = objdump[:end]
+                objdump = objdump[start:end]
+            else:
+                objdump = objdump[start:]
 
             objdump = [line.split(b"\t") for line in objdump]
 
@@ -668,6 +679,7 @@ class RkCheckFunctions(gdb.Command):
             elf_bytes = "".join(elf_bytes)
 
             self.code_dict[name] = (size, elf_bytes)
+            sym_i += 1
 
     def fill_altinstr_dict(self):
         global file_g
@@ -677,7 +689,7 @@ class RkCheckFunctions(gdb.Command):
         # .long offset          <-- Adress to instructions we ignore: addr = (__alt_instructions + cur (offset into .altinstructions)) + offset + v_off_g
         # .long repl_offset
         # .word cpuid
-        # .byte instrlen        
+        # .byte instrlen
         # .byte replacementlen  <-- How many instructions we skip
         # .byte padlen
 
@@ -685,7 +697,7 @@ class RkCheckFunctions(gdb.Command):
         data = sec.data()
 
         alt_instr_sz = 13
-        replacementlen_off = 11 
+        replacementlen_off = 11
 
         i = 0
         while i < sec["sh_size"]:
@@ -747,6 +759,10 @@ class RkCheckFunctions(gdb.Command):
                 self.paravirt_dict[key] = [value]
 
             i = i + paravirt_patch_site_sz
+
+    def compare_functions(self):
+        for size, bytes in self.code_dict:
+            pass
 
     def get_v_addr(self, symbol):
         try:

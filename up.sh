@@ -67,7 +67,7 @@ if ! test -z $BLOCKSET && test -z $GDBSET; then
   exit 1
 fi
 
-qemu-system-x86_64 $PARAMS -hda debian.img -m 4096 -enable-kvm -cpu host -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::2222-:22 &
+qemu-system-x86_64 -gdb tcp::1234 -hda debian.img -m 4096 -enable-kvm -cpu host -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::2222-:22 &
 
 if ! test -z $GDBSET; then
   test -z $EXPECTSSH || st -e ./ssh.expect &
