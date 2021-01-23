@@ -589,7 +589,10 @@ class RkCheckFunctions(gdb.Command):
     symbols = None
     headers = None
 
-    #Key: symbol, value: list of ranges for exclude bytes
+    #Key: symbol, value: tuple (size, code bytes from ELF file)
+    code_dict = {}
+
+    #Key: symbol, value: list of ranges for exclude bytes (relative to function entry!)
     altinstr_dict = {}
     paravirt_dict = {}
 
@@ -618,87 +621,53 @@ class RkCheckFunctions(gdb.Command):
         self.s = self.f.get_section_by_name(".symtab")
 
         print("this might take a while")
-        print("exits silently when no tampering has been detected")
 
+        print("populating dictionaries...", end='', flush=True)
+        self.fill_code_dict()
         self.fill_altinstr_dict()
         self.fill_paravirt_dict()
+        print(" done!")
 
+    def fill_code_dict(self):
         for symbol in self.s.iter_symbols():
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
                 size = symbol.entry["st_size"]
-                value = symbol.entry["st_value"]
             else:
                 continue
-
+        
             if name is None or ".cold." in name or ".part." in name or ".constprop." in name:
                 continue
+        
+            addr = self.get_v_addr(name)
+            if addr is None:
+                continue
 
-            self.compare_function(name, size, value)
-            
-    def compare_function(self, name, size, value):
-        addr = self.get_v_addr(name)
+            objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True).split(b"\n")[:-1]
 
-        if addr is None:
-            return None
+            start = None
+            for i, s in enumerate(objdump):
+                if name in s.decode(sys.stdout.encoding):
+                    start = i
+                    break
 
-        # read in live bytes from start address of the function + 5B (to offset the call to __fentry__)
-        live_bytes = gdb.execute(f"xbfunc {addr} {size}", to_string=True).split()
-        objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True).split(b"\n")[:-1]
+            objdump = objdump[start+1:]
 
-        start = None
-        for i, s in enumerate(objdump):
-            if name in s.decode(sys.stdout.encoding):
-                start = i
-                break
+            end = None
+            for i, s in enumerate(objdump):
+                if b'' == s:
+                    end = i
+                    break
 
-        objdump = objdump[start+1:]
+            if end is not None:
+                objdump = objdump[:end]
 
-        end = None
-        for i, s in enumerate(objdump):
-            if b'' == s:
-                end = i
-                break
+            objdump = [line.split(b"\t") for line in objdump]
 
-        if end is not None:
-            objdump = objdump[:end]
+            elf_bytes = [line[1].decode(sys.stdout.encoding).strip().replace(' ', '') for line in objdump]
+            elf_bytes = "".join(elf_bytes)
 
-        # exclude_objdump = []
-        # for i, s in enumerate(objdump):
-        #     bytes_start = s.decode(sys.stdout.encoding).find(':')
-        #     if b"<" in s and b">" in s or b"0x" in s or b"ffffff" in s[bytes_start:]:
-        #         exclude_objdump.append(i)
-
-        # exclude_live_bytes = []
-        # for i in exclude_objdump:
-        #     bytes = objdump[i].split(b"\t")[1]
-        #     bytes = bytes.strip().split(b" ")
-        #     for j in range(len(bytes)):
-        #         exclude_live_bytes.append(i + j)
-
-        # objdump = [elf_byte for i, elf_byte in enumerate(objdump) if i not in exclude_objdump]
-        objdump = [line.split(b"\t") for line in objdump]
-
-        # live_bytes = [live_byte for i, live_byte in enumerate(live_bytes) if i not in exclude_live_bytes]
-        live_bytes = "".join(live_bytes)
-
-        elf_bytes = [line[1].decode(sys.stdout.encoding).strip().replace(' ', '') for line in objdump]
-        elf_bytes = "".join(elf_bytes)
-
-        int3_chain = ''.join('c' * len(live_bytes))
-        if live_bytes == int3_chain:
-            return None
-
-        if live_bytes != elf_bytes:
-            print("x", end='', flush=True)
-        else:
-            print("o", end='', flush=True)
-
-    def get_v_addr(self, symbol):
-        try:
-            return gdb.execute(f"x {symbol}", to_string=True).split(" ")[0]
-        except:
-            return None
+            self.code_dict[name] = (size, elf_bytes)
 
     def fill_altinstr_dict(self):
         global file_g
@@ -740,7 +709,6 @@ class RkCheckFunctions(gdb.Command):
 
             i = i + alt_instr_sz
 
-
     def fill_paravirt_dict(self):
         global file_g
         global v_off_g
@@ -779,5 +747,11 @@ class RkCheckFunctions(gdb.Command):
                 self.paravirt_dict[key] = [value]
 
             i = i + paravirt_patch_site_sz
+
+    def get_v_addr(self, symbol):
+        try:
+            return gdb.execute(f"x {symbol}", to_string=True).split(" ")[0]
+        except:
+            return None
 
 RkCheckFunctions()
