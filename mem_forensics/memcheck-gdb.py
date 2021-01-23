@@ -698,7 +698,7 @@ class RkCheckFunctions(gdb.Command):
         try:
             return gdb.execute(f"p {symbol}", to_string=True).split(" ")[-2]
         except:
-            print("error executing `where`, is the VM running?")
+            print(f"error executing `p {symbol}`")
             return None
 
     def fill_altinstr_dict(self):
