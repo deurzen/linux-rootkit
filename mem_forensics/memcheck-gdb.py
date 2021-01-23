@@ -591,7 +591,7 @@ class RkCheckFunctions(gdb.Command):
     symbols = None
     headers = None
 
-    #Key: function name, value: list of (addr, len) tuples
+    #Key: symbol, value: range for exclude bytes
     altinstr_dict = {}
     paravirt_dict = {}
 
@@ -647,14 +647,30 @@ class RkCheckFunctions(gdb.Command):
         # .byte padlen
 
         sec = self.f.get_section_by_name(".altinstructions")
-        __alt_instructions = 0
         data = sec.data()
+
+        alt_instr_sz = 13
+        replacementlen_off = 11 
 
         i = 0
         while i < sec["sh_size"]:
             addr = (sec["sh_addr"] + i) + int.from_bytes(data[i:(i + 4)], byteorder="little", signed=True) + v_off_g
-            print(f"Got addr {hex(addr)}\n")
-            i = i + 13
+            replacementlen = int.from_bytes(data[(i + replacementlen_off):(i + replacementlen_off + 1)], byteorder="little", signed=False)
 
+            info = gdb.execute(f"info symbol {addr}", to_string=True).split(" ")
+
+            key = info[0]
+
+            if info[1] == "+":
+                t = int(info[2])
+                value = range(t, t + replacementlen)
+            else:
+                value = range(replacementlen)
+
+            self.altinstr_dict[key] = value
+
+            i = i + alt_instr_sz
+
+        print(self.altinstr_dict)
 
 RkCheckFunctions()
