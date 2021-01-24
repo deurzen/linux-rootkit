@@ -671,6 +671,7 @@ class RkCheckFunctions(gdb.Command):
         gdb.execute(f"add-inferior -exec {tmp} -no-connection")
         gdb.execute("inferior 2")
 
+        i = 0
         for symbol in self.s.iter_symbols():
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
@@ -679,7 +680,6 @@ class RkCheckFunctions(gdb.Command):
                 try:
                     a = gdb.execute(f"x {name} + {v_off_g}", to_string=True).split(" ")[0]
                 except:
-                    print("TEST_try1")
                     self.skip_count += 1
                     continue
 
@@ -687,13 +687,16 @@ class RkCheckFunctions(gdb.Command):
                     addr = int(a, 16)
                     elf = gdb.selected_inferior().read_memory(addr, size)
                 except:
-                    print("TEST_try2")
                     self.skip_count += 1
                     continue
 
                 self.code_dict[name] = (addr, size, bytes(elf).hex())
 
+                i += 1
+                if i == 1000:
+                    break
 
+            
         gdb.execute("inferior 1")
 
 
@@ -788,10 +791,11 @@ class RkCheckFunctions(gdb.Command):
     def compare_functions(self):
         for name, (addr, size, elf) in self.code_dict.items():
             try:
-                addr = int(addr, 16)
                 live = gdb.selected_inferior().read_memory(addr, size)
+                live = bytes(live).hex()
             except:
                 self.skip_count += 1
+                print("Skipped at cmp")
                 continue
 
             to_exclude = []
@@ -821,16 +825,16 @@ class RkCheckFunctions(gdb.Command):
             to_exclude += to_exclude_paravirt + to_exclude_altinstr
 
             if to_exclude:
-                elf_bytes = "".join([elf_byte for i, elf_byte in enumerate(elf_bytes)
+                elf = "".join([elf_byte for i, elf_byte in enumerate(elf)
                                      if i not in to_exclude])
 
-                live_bytes = "".join([elf_byte for i, elf_byte in enumerate(live_bytes)
+                live = "".join([live_byte for i, live_byte in enumerate(live)
                                       if i not in to_exclude])
 
             if live != elf:
                 self.diff_count += 1
                 print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
-                print(f"excluded: {to_exclude}, expected: {elf_bytes}, live: {live_bytes}")
+                print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
             else:
                 self.same_count += 1
 
