@@ -642,27 +642,26 @@ class RkCheckFunctions(gdb.Command):
 
         print("this will take a while")
         print("populating dictionaries...", end='', flush=True)
-        self.test()
-        # self.fill_code_dict()
-        # self.fill_altinstr_dict()
-        # self.fill_paravirt_dict()
-        # self.handle_reloc()
+        self.fill_code_dict()
+        self.fill_altinstr_dict()
+        self.fill_paravirt_dict()
         print(" done!")
 
         print("comparing functions...", end='', flush=True)
-        #self.compare_functions()
+        self.compare_functions()
         print(" done!")
 
         print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} (symbols) skipped")
 
-    def test(self):
+
+    def fill_code_dict(self):
         global file_g
         global v_off_g
 
         tmp = ".tmpvml"
 
         s = subprocess.run(f"objcopy --change-addresses={v_off_g} {file_g} {tmp}", shell=True)
-        
+
         if s.returncode != 0:
             print("Error running objcopy!")
             return None
@@ -680,75 +679,23 @@ class RkCheckFunctions(gdb.Command):
                 try:
                     a = gdb.execute(f"x {name} + {v_off_g}", to_string=True).split(" ")[0]
                 except:
-                    print(f"1: {name}")
+                    print("TEST_try1")
+                    self.skip_count += 1
                     continue
 
                 try:
                     addr = int(a, 16)
                     elf = gdb.selected_inferior().read_memory(addr, size)
                 except:
-                    print(f"2: {name}")
+                    print("TEST_try2")
+                    self.skip_count += 1
                     continue
+
+                self.code_dict[name] = (addr, size, bytes(elf).hex())
 
 
         gdb.execute("inferior 1")
-  
 
-    def fill_code_dict(self):
-        for i, symbol in enumerate(self.s.iter_symbols()):
-            if i < 800:
-                continue
-            if i > 1000:
-                break
-
-            if symbol.entry["st_info"]["type"] == "STT_FUNC":
-                name = symbol.name
-                size = symbol.entry["st_size"]
-            else:
-                self.skip_count += 1
-                continue
-
-            if name is None or ".cold." in name or ".part." in name or ".constprop." in name:
-                self.skip_count += 1
-                continue
-
-            if size is None or size == 0:
-                self.skip_count += 1
-                continue
-
-            addr = self.get_v_addr(name)
-            if addr is None:
-                self.skip_count += 1
-                continue
-
-            objdump = subprocess.check_output(f"objdump --insn-width 20 -z --disassemble={name} {file_g}", shell=True)
-            objdump = objdump.split(b"\n")[:-1]
-
-            start = None
-            end = None
-
-            for i, s in enumerate(objdump):
-                if start is not None:
-                    if end is None and s == b'':
-                        end = i
-                else:
-                    if name in s.decode(sys.stdout.encoding):
-                        start = i + 1
-
-                if start is not None and end is not None:
-                    break
-
-            if end is not None:
-                objdump = objdump[start:end]
-            else:
-                objdump = objdump[start:]
-
-            objdump = [line.split(b"\t") for line in objdump]
-
-            elf_bytes = [line[1].decode(sys.stdout.encoding).strip().replace(' ', '') for line in objdump]
-            elf_bytes = "".join(elf_bytes)
-
-            self.code_dict[name] = (size, elf_bytes)
 
     def fill_altinstr_dict(self):
         global file_g
@@ -779,9 +726,9 @@ class RkCheckFunctions(gdb.Command):
 
             if info[1] == "+":
                 t = int(info[2])
-                value = range(t, t + replacementlen)
+                value = range(t, 2 * (t + replacementlen))
             else:
-                value = range(replacementlen)
+                value = range(2 * replacementlen)
 
             if key in self.altinstr_dict:
                 self.altinstr_dict[key].append(value)
@@ -817,7 +764,7 @@ class RkCheckFunctions(gdb.Command):
         i = 0
         while i < sec["sh_size"]:
             addr = int.from_bytes(data[i:(i + 8)], byteorder="little", signed=False) + v_off_g
-            _len = int.from_bytes(data[(i + len_off):(i + len_off + 1)], byteorder="little", signed=False)
+            len_ = int.from_bytes(data[(i + len_off):(i + len_off + 1)], byteorder="little", signed=False)
 
             info = gdb.execute(f"info symbol {addr}", to_string=True).split(" ")
 
@@ -825,9 +772,9 @@ class RkCheckFunctions(gdb.Command):
 
             if info[1] == "+":
                 t = int(info[2])
-                value = range(t, t + _len)
+                value = range(t, 2 * (t + len_))
             else:
-                value = range(_len)
+                value = range(2 * len_)
 
             if key in self.paravirt_dict:
                 self.paravirt_dict[key].append(value)
@@ -836,112 +783,35 @@ class RkCheckFunctions(gdb.Command):
 
             i += paravirt_patch_site_sz
 
-    def fill_relatext_dict(self):
-        global file_g
-        global v_off_g
 
-        # typedef __u64	Elf64_Addr;
-        # typedef __u64	Elf64_Xword;
-        # typedef __s64	Elf64_Sxword;
-        #
-        # typedef struct elf64_rela {
-        #   Elf64_Addr    r_offset;  /* Location at which to apply the action */
-        #   Elf64_Xword   r_info;    /* index and type of relocation */
-        #   Elf64_Sxword  r_addend;  /* Constant addend used to compute value */
-        # } Elf64_Rela;
-
-        sec = self.f.get_section_by_name(".rela.text")
-        symtab = self.f.get_section(sec['sh_link'])
-
-        uses_v_off = [4]
-
-        for reloc in sec.iter_relocations():
-            addr = reloc['r_offset'] + v_off_g
-            addend = reloc['r_addend']
-            rel_type = reloc['r_info_type']
-            value = symtab.get_symbol(reloc['r_info_sym'])['st_value'] \
-                + (v_off_g if rel_type in uses_v_off else 0)
-
-            self.relatext_dict[addr] = (rel_type, addend, value)
-
-    def handle_reloc(self):
-        global v_off_g
-
-        rela = self.f.get_section_by_name(".rela.text")
-        symtab = self.f.get_section(rela['sh_link'])
-
-        for reloc in rela.iter_relocations():
-            rel_off = reloc['r_offset']
-            rel_op = reloc['r_info_type']
-
-            func = gdb.execute(f"info symbol {rel_off + v_off_g}", to_string = True).split(" ")
-
-            # Which function do we modify?
-            sym = func[0]
-
-            # Do we have an offset into the function?
-            if func[1] == "+":
-                off = int(func[2])
-            else:
-                off = 0
-
-            # We now know where in the code_dict we have to do a relocation
-            # That is, at sym_entry + off; the operation depends on the type
-
-            # 'Recipe' is S + A
-            if (rel_op == Relocs.R_X86_64_32 or rel_op == Relocs.R_X86_64_32S) and sym in self.code_dict:
-                sym_value = symtab.get_symbol(reloc['r_info_sym'])['st_value']
-                addend = reloc['r_addend']
-                res = sym_value + addend + v_off_g
-
-                l = gdb.selected_inferior().read_memory(rel_off + v_off_g, 4)
-                expected = int.from_bytes(l.tobytes(), byteorder="little", signed=False)
-                print(f"expected: {hex(expected)}, result: {hex(res)}")
-       
 
     def compare_functions(self):
-        for name, (size, elf_bytes) in self.code_dict.items():
-            addr = int(self.get_v_addr(name), 0)
-            disassembly = gdb.execute(f"disass/r {name}", to_string=True).split("\n")[1:-2]
-
-            to_exclude_live = []
-            for i, s in enumerate(disassembly):
-                if "nop" in s:
-                    to_exclude_live.append(i)
-
-            disassembly = [line.split("\t") for line in disassembly]
-            offsets, live_bytes = zip(*[(line[0], line[1].strip()) for line in disassembly])
-            offsets = [int(s[s.find("<")+1:s.find(">")]) for s in offsets]
-            offsets.append(size)
-
-            live_bytes_list = [byte.split(' ') for byte in live_bytes]
-
-            live_bytes = "".join([byte.replace(' ', '') for byte in live_bytes])
+        for name, (addr, size, elf) in self.code_dict.items():
+            try:
+                addr = int(addr, 16)
+                live = gdb.selected_inferior().read_memory(addr, size)
+            except:
+                self.skip_count += 1
+                continue
 
             to_exclude = []
-            for i in to_exclude_live:
-                for j in range(len(live_bytes_list[i])):
-                    to_exclude.append(i + j)
+            if len(live) > 1 and live[0:2] == "0f":
+                to_exclude += list(range(10))
 
             # https://lore.kernel.org/patchwork/patch/391755/
             # performance optimization: only check entire function if first byte matches
-            if len(live_bytes) > 1 and live_bytes[0:2] == "cc":
-                int3_chain = ''.join('c' * len(live_bytes))
-                if live_bytes == int3_chain:
+            if len(live) > 1 and live[0:2] == "cc":
+                int3_chain = ''.join('c' * len(live))
+                if live == int3_chain:
                     self.skip_count += 1
                     return
 
-            if len(live_bytes) > 1 and live_bytes[0:2] == "00":
-                null_chain = ''.join('0' * len(live_bytes))
-                if live_bytes == null_chain:
+            if len(live) > 1 and live[0:2] == "00":
+                null_chain = ''.join('0' * len(live))
+                if live == null_chain:
                     self.skip_count += 1
                     return
 
-            #Check relocs
-            for i in range(size):
-                if (addr + i) in self.relatext_dict:
-                    to_exclude += self.handle_reloc(addr, self.relatext_dict[addr + i])
-                    
             to_exclude_paravirt = [l for r in self.paravirt_dict[name]
                                    for l in list(r)] if name in self.paravirt_dict else []
 
@@ -957,7 +827,7 @@ class RkCheckFunctions(gdb.Command):
                 live_bytes = "".join([elf_byte for i, elf_byte in enumerate(live_bytes)
                                       if i not in to_exclude])
 
-            if live_bytes != elf_bytes:
+            if live != elf:
                 self.diff_count += 1
                 print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
                 print(f"excluded: {to_exclude}, expected: {elf_bytes}, live: {live_bytes}")
