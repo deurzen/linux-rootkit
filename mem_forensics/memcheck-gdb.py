@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 from elftools.elf import elffile
+from enum import IntEnum
 
 v_off_g = 0
 file_g = None
@@ -579,6 +580,13 @@ syscalls = [
     '__x64_sys_rseq'
 ]
 
+class Relocs(IntEnum):
+    R_X86_64_64 = 1
+    R_X86_64_PC32 = 2
+    R_X86_64_PLT32 = 4
+    R_X86_64_32 = 10
+    R_X86_64_32S = 11
+
 class RkCheckFunctions(gdb.Command):
     """Check the integrity of the functions in the kernel."""
 
@@ -601,6 +609,7 @@ class RkCheckFunctions(gdb.Command):
     altinstr_dict = {}
     paravirt_dict = {}
 
+    #Key: address to bytes, value: (rel_type, addend, value)
     relatext_dict = {}
 
     def __init__(self):
@@ -636,11 +645,11 @@ class RkCheckFunctions(gdb.Command):
         self.fill_code_dict()
         self.fill_altinstr_dict()
         self.fill_paravirt_dict()
-        self.fill_relatext_dict()
+        self.handle_reloc()
         print(" done!")
 
         print("comparing functions...", end='', flush=True)
-        self.compare_functions()
+        #self.compare_functions()
         print(" done!")
 
         print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} (symbols) skipped")
@@ -753,10 +762,10 @@ class RkCheckFunctions(gdb.Command):
         # 4 byte padding
 
         # struct paravirt_patch_site {
-	#    u8   *instr;     /* original instructions */
-	#    u8   instrtype;  /* type of this instruction */
-	#    u8   len;        /* length of original instruction */
-	#    u16  clobbers;   /* what registers you may clobber */
+        #    u8   *instr;     /* original instructions */
+        #    u8   instrtype;  /* type of this instruction */
+        #    u8   len;        /* length of original instruction */
+        #    u16  clobbers;   /* what registers you may clobber */
         #};
 
         sec = self.f.get_section_by_name(".parainstructions")
@@ -802,19 +811,53 @@ class RkCheckFunctions(gdb.Command):
         # } Elf64_Rela;
 
         sec = self.f.get_section_by_name(".rela.text")
-        data = sec.data()
         symtab = self.f.get_section(sec['sh_link'])
 
         uses_v_off = [4]
 
         for reloc in sec.iter_relocations():
             addr = reloc['r_offset'] + v_off_g
-            type = reloc['r_info_type']
             addend = reloc['r_addend']
+            rel_type = reloc['r_info_type']
             value = symtab.get_symbol(reloc['r_info_sym'])['st_value'] \
-                + (v_off_g if type in uses_v_off else 0)
+                + (v_off_g if rel_type in uses_v_off else 0)
 
-            self.relatext_dict[addr] = (type, addend, value)
+            self.relatext_dict[addr] = (rel_type, addend, value)
+
+    def handle_reloc(self):
+        global v_off_g
+
+        rela = self.f.get_section_by_name(".rela.text")
+        symtab = self.f.get_section(rela['sh_link'])
+
+        for reloc in rela.iter_relocations():
+            rel_off = reloc['r_offset']
+            rel_op = reloc['r_info_type']
+
+            func = gdb.execute(f"info symbol {rel_off + v_off_g}", to_string = True).split(" ")
+
+            # Which function do we modify?
+            sym = func[0]
+
+            # Do we have an offset into the function?
+            if func[1] == "+":
+                off = int(func[2])
+            else:
+                off = 0
+
+            # We now know where in the code_dict we have to do a relocation
+            # That is, at sym_entry + off; the operation depends on the type
+
+            # 'Recipe' is S + A
+            if (rel_op == Relocs.R_X86_64_32 or rel_op == Relocs.R_X86_64_32S) and sym in self.code_dict:
+                sym_value = symtab.get_symbol(reloc['r_info_sym'])['st_value']
+                addend = reloc['r_addend']
+                res = sym_value + addend + v_off_g
+
+                l = gdb.selected_inferior().read_memory(rel_off + v_off_g, 4)
+                expected = int.from_bytes(l.tobytes(), byteorder="little", signed=False)
+                print(f"expected: {hex(expected)}, result: {hex(res)}")
+       
 
     def compare_functions(self):
         for name, (size, elf_bytes) in self.code_dict.items():
@@ -854,30 +897,11 @@ class RkCheckFunctions(gdb.Command):
                     self.skip_count += 1
                     return
 
+            #Check relocs
             for i in range(size):
                 if (addr + i) in self.relatext_dict:
-                    reloc = self.relatext_dict[addr + i]
-                    type = reloc[0]
-                    addend = reloc[1]
-                    value = reloc[2]
-
-                    # hideous{\,,ly} inefficent code :)
-                    if type == 4:
-                        for j in range(len(offsets) - 1):
-                            if i >= offsets[j] and i < offsets[j+1]:
-                                byte_offset = i - offsets[j]
-                                to_check_bytes = live_bytes_list[j][byte_offset:]
-                                comp1 = ((value - (addr + offsets[j+1])) + addend) + len(to_check_bytes)
-                                comp2 = int("0x" + "".join(to_check_bytes[::-1]), 16)
-                                if comp1 == comp2:
-                                    to_exclude += [(i + k) for k in range(len(to_check_bytes))]
-
-                    if type == 11:
-                        pass
-
-                    print(name, "found", hex(addr + i), (type, addend, hex(value)))
-
-
+                    to_exclude += self.handle_reloc(addr, self.relatext_dict[addr + i])
+                    
             to_exclude_paravirt = [l for r in self.paravirt_dict[name]
                                    for l in list(r)] if name in self.paravirt_dict else []
 
