@@ -642,10 +642,11 @@ class RkCheckFunctions(gdb.Command):
 
         print("this will take a while")
         print("populating dictionaries...", end='', flush=True)
-        self.fill_code_dict()
-        self.fill_altinstr_dict()
-        self.fill_paravirt_dict()
-        self.handle_reloc()
+        self.test()
+        # self.fill_code_dict()
+        # self.fill_altinstr_dict()
+        # self.fill_paravirt_dict()
+        # self.handle_reloc()
         print(" done!")
 
         print("comparing functions...", end='', flush=True)
@@ -653,6 +654,47 @@ class RkCheckFunctions(gdb.Command):
         print(" done!")
 
         print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} (symbols) skipped")
+
+    def test(self):
+        global file_g
+        global v_off_g
+
+        tmp = ".tmpvml"
+
+        s = subprocess.run(f"objcopy --change-addresses={v_off_g} {file_g} {tmp}", shell=True)
+        
+        if s.returncode != 0:
+            print("Error running objcopy!")
+            return None
+
+        # TODO just grab inferior id from add-inferior..
+        gdb.execute(f"add-inferior -exec {tmp} -no-connection")
+        gdb.execute("inferior 2")
+
+        for symbol in self.s.iter_symbols():
+            if symbol.entry["st_info"]["type"] == "STT_FUNC":
+                name = symbol.name
+                size = symbol.entry["st_size"]
+                try:
+                    a = gdb.execute(f"x {name}", to_string=True).split(" ")[0]
+                except:
+                    continue
+
+                addr = int(a, 16)
+                try:
+                    elf = gdb.selected_inferior().read_memory(addr, size)
+                    gdb.execute("inferior 1")
+                    live = gdb.selected_inferior().read_memory(addr, size)
+                    gdb.execute("inferior 2")
+                except:
+                    continue
+
+                if bytes(elf) != bytes(live):
+                    print(f"== {name} ==")
+                    print(f"Got bytes: {bytes(elf).hex()}")
+                    print(f"Live bytes: {bytes(live).hex()}")
+
+        
 
     def fill_code_dict(self):
         for i, symbol in enumerate(self.s.iter_symbols()):
