@@ -771,9 +771,9 @@ class RkCheckFunctions(gdb.Command):
                 elf_bytes = [elf_byte for i, elf_byte in enumerate(elf_bytes) if i not in to_exclude]
                 live_bytes = [elf_byte for i, elf_byte in enumerate(live_bytes) if i not in to_exclude]
 
-            # if live_bytes != elf_bytes:
-            #     print(f"function `{name} compromised, live bytes not equal to ELF bytes")
-            #     print(f"expected: {elf_bytes}, live: {live_bytes}")
+            if live_bytes != elf_bytes:
+                print(f"function `{name} compromised, live bytes not equal to ELF bytes")
+                print(f"expected: {elf_bytes}, live: {live_bytes}")
 
     def get_v_addr(self, symbol):
         try:
