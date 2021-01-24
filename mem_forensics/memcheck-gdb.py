@@ -619,7 +619,7 @@ class RkCheckFunctions(gdb.Command):
         self.f = elffile.ELFFile(open(file_g, "rb"))
         self.s = self.f.get_section_by_name(".symtab")
 
-        print("this might take a while")
+        print("this will take a while")
         print("populating dictionaries...", end='', flush=True)
         self.fill_code_dict()
         self.fill_altinstr_dict()
@@ -632,9 +632,9 @@ class RkCheckFunctions(gdb.Command):
 
     def fill_code_dict(self):
         for i, symbol in enumerate(self.s.iter_symbols()):
-            if i < 30195:
-                continue
-            if i > 30200:
+            # if i < 30195:
+            #     continue
+            if i > 2000:
                 break
 
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
@@ -780,13 +780,17 @@ class RkCheckFunctions(gdb.Command):
 
             live_bytes = "".join(live_bytes)
 
-            int3_chain = ''.join('c' * len(live_bytes))
-            if live_bytes == int3_chain:
-                return
+            # https://lore.kernel.org/patchwork/patch/391755/
+            # performance optimization: only check entire function if first byte matches
+            if len(live_bytes) > 1 and live_bytes[0:2] == "cc":
+                int3_chain = ''.join('c' * len(live_bytes))
+                if live_bytes == int3_chain:
+                    return
 
-            null_chain = ''.join('0' * len(live_bytes))
-            if live_bytes == null_chain:
-                return
+            if len(live_bytes) > 1 and live_bytes[0:2] == "00":
+                null_chain = ''.join('0' * len(live_bytes))
+                if live_bytes == null_chain:
+                    return
 
             to_exclude_paravirt = [l for r in self.paravirt_dict[name] for l in list(r)] if name in self.paravirt_dict else []
             to_exclude_altinstr = [l for r in self.altinstr_dict[name] for l in list(r)] if name in self.altinstr_dict else []
