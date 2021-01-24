@@ -621,18 +621,20 @@ class RkCheckFunctions(gdb.Command):
 
         print("this might take a while")
         print("populating dictionaries...", end='', flush=True)
-
         self.fill_code_dict()
         self.fill_altinstr_dict()
         self.fill_paravirt_dict()
-        self.compare_functions()
+        print(" done!")
 
+        print("comparing functions...", end='', flush=True)
+        self.compare_functions()
         print(" done!")
 
     def fill_code_dict(self):
-        sym_i = 0
-        for symbol in self.s.iter_symbols():
-            if sym_i == 100:
+        for i, symbol in enumerate(self.s.iter_symbols()):
+            if i < 30195:
+                continue
+            if i > 30200:
                 break
 
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
@@ -642,6 +644,9 @@ class RkCheckFunctions(gdb.Command):
                 continue
 
             if name is None or ".cold." in name or ".part." in name or ".constprop." in name:
+                continue
+
+            if size is None or size == 0:
                 continue
 
             addr = self.get_v_addr(name)
@@ -676,7 +681,6 @@ class RkCheckFunctions(gdb.Command):
             elf_bytes = "".join(elf_bytes)
 
             self.code_dict[name] = (size, elf_bytes)
-            sym_i += 1
 
     def fill_altinstr_dict(self):
         global file_g
@@ -759,21 +763,42 @@ class RkCheckFunctions(gdb.Command):
 
     def compare_functions(self):
         for name, (size, elf_bytes) in self.code_dict.items():
-            v_addr = self.get_v_addr(name)
-            live_bytes = gdb.execute(f"xbfunc {v_addr} {size}", to_string=True).split()
+            disassembly = gdb.execute(f"disass/r {name}", to_string=True).split("\n")[1:-2]
+
+            to_exclude_live = []
+            for i, s in enumerate(disassembly):
+                if "nop" in s:
+                    to_exclude_live.append(i)
+
+            disassembly = [line.split("\t") for line in disassembly]
+            live_bytes = [line[1].strip().replace(' ', '') for line in disassembly]
+
+            to_exclude = []
+            for i in to_exclude_live:
+                for j in range(len(live_bytes[i])):
+                    to_exclude.append(i + j)
+
             live_bytes = "".join(live_bytes)
+
+            int3_chain = ''.join('c' * len(live_bytes))
+            if live_bytes == int3_chain:
+                return
+
+            null_chain = ''.join('0' * len(live_bytes))
+            if live_bytes == null_chain:
+                return
 
             to_exclude_paravirt = [l for r in self.paravirt_dict[name] for l in list(r)] if name in self.paravirt_dict else []
             to_exclude_altinstr = [l for r in self.altinstr_dict[name] for l in list(r)] if name in self.altinstr_dict else []
 
-            to_exclude = to_exclude_paravirt + to_exclude_altinstr
+            to_exclude += to_exclude_paravirt + to_exclude_altinstr
             if to_exclude:
-                elf_bytes = [elf_byte for i, elf_byte in enumerate(elf_bytes) if i not in to_exclude]
-                live_bytes = [elf_byte for i, elf_byte in enumerate(live_bytes) if i not in to_exclude]
+                elf_bytes = "".join([elf_byte for i, elf_byte in enumerate(elf_bytes) if i not in to_exclude])
+                live_bytes = "".join([elf_byte for i, elf_byte in enumerate(live_bytes) if i not in to_exclude])
 
             if live_bytes != elf_bytes:
-                print(f"function `{name} compromised, live bytes not equal to ELF bytes")
-                print(f"expected: {elf_bytes}, live: {live_bytes}")
+                print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
+                print(f"excluded: {to_exclude}, expected: {elf_bytes}, live: {live_bytes}")
 
     def get_v_addr(self, symbol):
         try:
