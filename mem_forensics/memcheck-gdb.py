@@ -643,7 +643,7 @@ class RkCheckFunctions(gdb.Command):
         self.compare_functions()
         print(" done!")
 
-        print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} skipped")
+        print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} (symbols) skipped")
 
     def fill_code_dict(self):
         for i, symbol in enumerate(self.s.iter_symbols()):
@@ -803,15 +803,18 @@ class RkCheckFunctions(gdb.Command):
 
         sec = self.f.get_section_by_name(".rela.text")
         data = sec.data()
+        symtab = self.f.get_section(sec['sh_link'])
 
         for reloc in sec.iter_relocations():
             addr = reloc['r_offset'] + v_off_g
             info = reloc['r_info']
             addend = reloc['r_addend']
+            sym_value = symtab.get_symbol(reloc['r_info_sym'])['st_value'] + v_off_g
 
             print('offset = %s' % hex(addr))
             print('info = %s' % hex(info))
             print('addend = %s' % hex(addend))
+            print('value = %s' % hex(sym_value))
 
     def compare_functions(self):
         for name, (size, elf_bytes) in self.code_dict.items():
