@@ -672,7 +672,7 @@ class RkCheckFunctions(gdb.Command):
                 self.skip_count += 1
                 continue
 
-            objdump = subprocess.check_output(f"objdump -z --disassemble={name} {file_g}", shell=True)
+            objdump = subprocess.check_output(f"objdump --insn-width 20 -z --disassemble={name} {file_g}", shell=True)
             objdump = objdump.split(b"\n")[:-1]
 
             start = None
@@ -833,6 +833,8 @@ class RkCheckFunctions(gdb.Command):
 
             live_bytes_list = [byte.split(' ') for byte in live_bytes]
 
+            live_bytes = "".join([byte.replace(' ', '') for byte in live_bytes])
+
             to_exclude = []
             for i in to_exclude_live:
                 for j in range(len(live_bytes_list[i])):
@@ -840,13 +842,13 @@ class RkCheckFunctions(gdb.Command):
 
             # https://lore.kernel.org/patchwork/patch/391755/
             # performance optimization: only check entire function if first byte matches
-            if live_bytes and live_bytes[0][0] == "cc":
+            if len(live_bytes) > 1 and live_bytes[0:2] == "cc":
                 int3_chain = ''.join('c' * len(live_bytes))
                 if live_bytes == int3_chain:
                     self.skip_count += 1
                     return
 
-            if live_bytes and live_bytes[0][0] == "00":
+            if len(live_bytes) > 1 and live_bytes[0:2] == "00":
                 null_chain = ''.join('0' * len(live_bytes))
                 if live_bytes == null_chain:
                     self.skip_count += 1
@@ -859,6 +861,7 @@ class RkCheckFunctions(gdb.Command):
                     addend = reloc[1]
                     value = reloc[2]
 
+                    # hideous{\,,ly} inefficent code :)
                     if type == 4:
                         for j in range(len(offsets) - 1):
                             if i >= offsets[j] and i < offsets[j+1]:
@@ -882,8 +885,6 @@ class RkCheckFunctions(gdb.Command):
                                    for l in list(r)] if name in self.altinstr_dict else []
 
             to_exclude += to_exclude_paravirt + to_exclude_altinstr
-
-            live_bytes = "".join([byte.replace(' ', '') for byte in live_bytes])
 
             if to_exclude:
                 elf_bytes = "".join([elf_byte for i, elf_byte in enumerate(elf_bytes)
