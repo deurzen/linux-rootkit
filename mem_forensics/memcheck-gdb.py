@@ -82,7 +82,6 @@ class RkKaslrOffset(gdb.Command):
         obj_addr = hex(self.obj_addr)
 
         print(f"address for symbol `{self.symbol}` inside object file \"{file_g}\" is {obj_addr}")
-
         print(f"looking up addresses for symbol `{self.symbol}`")
 
         v_addr = self.get_v_addr()
@@ -621,15 +620,13 @@ class RkCheckFunctions(gdb.Command):
         self.s = self.f.get_section_by_name(".symtab")
 
         print("this might take a while")
-
         print("populating dictionaries...", end='', flush=True)
+
         self.fill_code_dict()
-        print(self.code_dict)
         self.fill_altinstr_dict()
-        # print(self.altinstr_dict)
         self.fill_paravirt_dict()
-        # print(self.paravirt_dict)
         self.compare_functions()
+
         print(" done!")
 
     def fill_code_dict(self):
@@ -761,8 +758,22 @@ class RkCheckFunctions(gdb.Command):
             i = i + paravirt_patch_site_sz
 
     def compare_functions(self):
-        for size, bytes in self.code_dict:
-            pass
+        for name, (size, elf_bytes) in self.code_dict.items():
+            v_addr = self.get_v_addr(name)
+            live_bytes = gdb.execute(f"xbfunc {v_addr} {size}", to_string=True).split()
+            live_bytes = "".join(live_bytes)
+
+            to_exclude_paravirt = [l for r in self.paravirt_dict[name] for l in list(r)] if name in self.paravirt_dict else []
+            to_exclude_altinstr = [l for r in self.altinstr_dict[name] for l in list(r)] if name in self.altinstr_dict else []
+
+            to_exclude = to_exclude_paravirt + to_exclude_altinstr
+            if to_exclude:
+                elf_bytes = [elf_byte for i, elf_byte in enumerate(elf_bytes) if i not in to_exclude]
+                live_bytes = [elf_byte for i, elf_byte in enumerate(live_bytes) if i not in to_exclude]
+
+            # if live_bytes != elf_bytes:
+            #     print(f"function `{name} compromised, live bytes not equal to ELF bytes")
+            #     print(f"expected: {elf_bytes}, live: {live_bytes}")
 
     def get_v_addr(self, symbol):
         try:
