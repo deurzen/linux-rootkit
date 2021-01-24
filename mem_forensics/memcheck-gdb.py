@@ -805,19 +805,20 @@ class RkCheckFunctions(gdb.Command):
         data = sec.data()
         symtab = self.f.get_section(sec['sh_link'])
 
+        uses_v_off = [4]
+
         for reloc in sec.iter_relocations():
             addr = reloc['r_offset'] + v_off_g
-            info = reloc['r_info']
+            type = reloc['r_info_type']
             addend = reloc['r_addend']
-            sym_value = symtab.get_symbol(reloc['r_info_sym'])['st_value'] + v_off_g
+            value = symtab.get_symbol(reloc['r_info_sym'])['st_value'] \
+                + (v_off_g if type in uses_v_off else 0)
 
-            print('offset = %s' % hex(addr))
-            print('info = %s' % hex(info))
-            print('addend = %s' % hex(addend))
-            print('value = %s' % hex(sym_value))
+            self.relatext_dict[addr] = (type, addend, value)
 
     def compare_functions(self):
         for name, (size, elf_bytes) in self.code_dict.items():
+            addr = int(self.get_v_addr(name), 0)
             disassembly = gdb.execute(f"disass/r {name}", to_string=True).split("\n")[1:-2]
 
             to_exclude_live = []
@@ -826,28 +827,53 @@ class RkCheckFunctions(gdb.Command):
                     to_exclude_live.append(i)
 
             disassembly = [line.split("\t") for line in disassembly]
-            live_bytes = [line[1].strip().replace(' ', '') for line in disassembly]
+            offsets, live_bytes = zip(*[(line[0], line[1].strip()) for line in disassembly])
+            offsets = [int(s[s.find("<")+1:s.find(">")]) for s in offsets]
+            offsets.append(size)
+
+            live_bytes_list = [byte.split(' ') for byte in live_bytes]
 
             to_exclude = []
             for i in to_exclude_live:
-                for j in range(len(live_bytes[i])):
+                for j in range(len(live_bytes_list[i])):
                     to_exclude.append(i + j)
-
-            live_bytes = "".join(live_bytes)
 
             # https://lore.kernel.org/patchwork/patch/391755/
             # performance optimization: only check entire function if first byte matches
-            if len(live_bytes) > 1 and live_bytes[0:2] == "cc":
+            if live_bytes and live_bytes[0][0] == "cc":
                 int3_chain = ''.join('c' * len(live_bytes))
                 if live_bytes == int3_chain:
                     self.skip_count += 1
                     return
 
-            if len(live_bytes) > 1 and live_bytes[0:2] == "00":
+            if live_bytes and live_bytes[0][0] == "00":
                 null_chain = ''.join('0' * len(live_bytes))
                 if live_bytes == null_chain:
                     self.skip_count += 1
                     return
+
+            for i in range(size):
+                if (addr + i) in self.relatext_dict:
+                    reloc = self.relatext_dict[addr + i]
+                    type = reloc[0]
+                    addend = reloc[1]
+                    value = reloc[2]
+
+                    if type == 4:
+                        for j in range(len(offsets) - 1):
+                            if i >= offsets[j] and i < offsets[j+1]:
+                                byte_offset = i - offsets[j]
+                                to_check_bytes = live_bytes_list[j][byte_offset:]
+                                comp1 = ((value - (addr + offsets[j+1])) + addend) + len(to_check_bytes)
+                                comp2 = int("0x" + "".join(to_check_bytes[::-1]), 16)
+                                if comp1 == comp2:
+                                    to_exclude += [(i + k) for k in range(len(to_check_bytes))]
+
+                    if type == 11:
+                        pass
+
+                    print(name, "found", hex(addr + i), (type, addend, hex(value)))
+
 
             to_exclude_paravirt = [l for r in self.paravirt_dict[name]
                                    for l in list(r)] if name in self.paravirt_dict else []
@@ -856,6 +882,8 @@ class RkCheckFunctions(gdb.Command):
                                    for l in list(r)] if name in self.altinstr_dict else []
 
             to_exclude += to_exclude_paravirt + to_exclude_altinstr
+
+            live_bytes = "".join([byte.replace(' ', '') for byte in live_bytes])
 
             if to_exclude:
                 elf_bytes = "".join([elf_byte for i, elf_byte in enumerate(elf_bytes)
