@@ -668,6 +668,7 @@ class RkCheckFunctions(gdb.Command):
             return None
 
         # TODO just grab inferior id from add-inferior..
+        # -no-connection is _very_ important, otherwise we read in the live bytes from the vm again
         gdb.execute(f"add-inferior -exec {tmp} -no-connection")
         gdb.execute("inferior 2")
 
@@ -675,26 +676,23 @@ class RkCheckFunctions(gdb.Command):
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
                 size = symbol.entry["st_size"]
+
                 try:
-                    a = gdb.execute(f"x {name}", to_string=True).split(" ")[0]
+                    a = gdb.execute(f"x {name} + {v_off_g}", to_string=True).split(" ")[0]
                 except:
+                    print(f"1: {name}")
                     continue
 
-                addr = int(a, 16)
                 try:
+                    addr = int(a, 16)
                     elf = gdb.selected_inferior().read_memory(addr, size)
-                    gdb.execute("inferior 1")
-                    live = gdb.selected_inferior().read_memory(addr, size)
-                    gdb.execute("inferior 2")
                 except:
+                    print(f"2: {name}")
                     continue
 
-                if bytes(elf) != bytes(live):
-                    print(f"== {name} ==")
-                    print(f"Got bytes: {bytes(elf).hex()}")
-                    print(f"Live bytes: {bytes(live).hex()}")
 
-        
+        gdb.execute("inferior 1")
+  
 
     def fill_code_dict(self):
         for i, symbol in enumerate(self.s.iter_symbols()):
