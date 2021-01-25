@@ -781,8 +781,6 @@ class RkCheckFunctions(gdb.Command):
     def compare_functions(self):
         global v_off_g
 
-        zerofonef = 0
-
         for (name, addr), (size, elf) in self.code_dict.items():
             try:
                 live = gdb.selected_inferior().read_memory(addr, size)
@@ -834,7 +832,7 @@ class RkCheckFunctions(gdb.Command):
                     elf_base = int("0x" + elf[i+2:i+4] + elf[i:i+2], 16)
                     live_base = int("0x" + live[i+2:i+4] + live[i:i+2], 16)
 
-                    # print(name, "i:", i, "ELF:" , hex(elf_base), "LIVE:", hex(live_base))
+                    print(name, "i:", i, "ELF:" , hex(elf_base), "LIVE:", hex(live_base))
 
                     # KASLR offset has not yet been applied
                     if elf_base + off == live_base:
@@ -852,17 +850,8 @@ class RkCheckFunctions(gdb.Command):
                         i += 2
                         continue
 
-                    # pattern: call -> nop
-                    if elf[i:i+4] == "e8" and live[i:i+2] == "0f01":
-                        print("e8-ef01 FOUND:", name)
-                        zerofonef += 1
-                        i += 5
-                        continue
-
                     # pattern: nop -> jmp
                     if elf[i:i+4] == "0f1f" and live[i:i+2] == "e9":
-                        print("0f1f-e9 FOUND:", name)
-                        zerofonef += 1
                         i += 5
                         continue
 
@@ -874,12 +863,10 @@ class RkCheckFunctions(gdb.Command):
             if resolved:
                 self.same_count += 1
             else:
-                # print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
-                # print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
+                print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
+                print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
 
                 self.diff_count += 1
-
-        print("ZEROFONEF", zerofonef)
 
     def get_v_addr(self, symbol):
         try:
