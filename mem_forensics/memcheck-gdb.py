@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+import difflib
 from elftools.elf import elffile
 from enum import IntEnum
 
@@ -671,7 +672,14 @@ class RkCheckFunctions(gdb.Command):
         gdb.execute(f"add-inferior -exec {tmp} -no-connection")
         gdb.execute("inferior 2")
 
+        i = 0
         for symbol in self.s.iter_symbols():
+            i += 1
+            if i < 32000:
+                continue
+            if i > 34000:
+                break
+
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
                 size = symbol.entry["st_size"]
@@ -752,6 +760,8 @@ class RkCheckFunctions(gdb.Command):
         #    u16  clobbers;   /* what registers you may clobber */
         #};
 
+        # TODO: KASLR!
+
         sec = self.f.get_section_by_name(".parainstructions")
         data = sec.data()
 
@@ -783,6 +793,8 @@ class RkCheckFunctions(gdb.Command):
 
 
     def compare_functions(self):
+        global v_off_g
+
         for (name, addr), (size, elf) in self.code_dict.items():
             try:
                 live = gdb.selected_inferior().read_memory(addr, size)
@@ -824,12 +836,37 @@ class RkCheckFunctions(gdb.Command):
                 live = "".join([live_byte for i, live_byte in enumerate(live)
                                       if i not in to_exclude])
 
-            if live != elf:
-                self.diff_count += 1
-                print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
-                print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
-            else:
+            i = 0
+            off = v_off_g >> 16
+            max_len = len(live)
+            resolved = True
+
+            while i < max_len:
+                if live[i] != elf[i]:
+                    j = i if i%2==0 else i-1
+
+                    base = int("0x" + elf[j+2:j+4] + elf[j:j+2], 16)
+                    must = int("0x" + live[j+2:j+4] + live[j:j+2], 16)
+
+                    if base + off == must:
+                        i += i - j + 4
+                        continue
+                    else:
+                        # account for the LOCK prefix
+                        # https://stackoverflow.com/a/8891781/11069175
+                        if elf[i:i+2] == "f0":
+                            i += 2
+                            continue
+
+                        resolved = False
+                        break
+                else:
+                    i += 1
+
+            if resolved:
                 self.same_count += 1
+            else:
+                self.diff_count += 1
 
     def get_v_addr(self, symbol):
         try:
