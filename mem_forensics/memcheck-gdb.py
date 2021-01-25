@@ -671,7 +671,6 @@ class RkCheckFunctions(gdb.Command):
         gdb.execute(f"add-inferior -exec {tmp} -no-connection")
         gdb.execute("inferior 2")
 
-        i = 0
         for symbol in self.s.iter_symbols():
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
@@ -690,13 +689,8 @@ class RkCheckFunctions(gdb.Command):
                     self.skip_count += 1
                     continue
 
-                self.code_dict[name] = (addr, size, bytes(elf).hex())
+                self.code_dict[(name, addr)] = (size, bytes(elf).hex())
 
-                i += 1
-                if i == 1000:
-                    break
-
-            
         gdb.execute("inferior 1")
 
 
@@ -789,13 +783,12 @@ class RkCheckFunctions(gdb.Command):
 
 
     def compare_functions(self):
-        for name, (addr, size, elf) in self.code_dict.items():
+        for (name, addr), (size, elf) in self.code_dict.items():
             try:
                 live = gdb.selected_inferior().read_memory(addr, size)
                 live = bytes(live).hex()
             except:
                 self.skip_count += 1
-                print("Skipped at cmp")
                 continue
 
             to_exclude = []
@@ -808,13 +801,13 @@ class RkCheckFunctions(gdb.Command):
                 int3_chain = ''.join('c' * len(live))
                 if live == int3_chain:
                     self.skip_count += 1
-                    return
+                    continue
 
             if len(live) > 1 and live[0:2] == "00":
                 null_chain = ''.join('0' * len(live))
                 if live == null_chain:
                     self.skip_count += 1
-                    return
+                    continue
 
             to_exclude_paravirt = [l for r in self.paravirt_dict[name]
                                    for l in list(r)] if name in self.paravirt_dict else []
