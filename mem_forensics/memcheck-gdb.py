@@ -674,11 +674,11 @@ class RkCheckFunctions(gdb.Command):
 
         i = 0
         for symbol in self.s.iter_symbols():
-            i += 1
-            if i < 32000:
-                continue
-            if i > 34000:
-                break
+            # i += 1
+            # if i < 32000:
+            #     continue
+            # if i > 34000:
+            #     break
 
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
@@ -843,29 +843,38 @@ class RkCheckFunctions(gdb.Command):
 
             while i < max_len:
                 if live[i] != elf[i]:
-                    j = i if i%2==0 else i-1
+                    elf_base = int("0x" + elf[i+2:i+4] + elf[i:i+2], 16)
+                    live_base = int("0x" + live[i+2:i+4] + live[i:i+2], 16)
 
-                    base = int("0x" + elf[j+2:j+4] + elf[j:j+2], 16)
-                    must = int("0x" + live[j+2:j+4] + live[j:j+2], 16)
+                    # print(name, "i:",i,"i:", i, "ELF, LIVE", hex(elf_base), hex(live_base))
 
-                    if base + off == must:
-                        i += i - j + 4
+                    # KASLR offset has not yet been applied
+                    if elf_base + off == live_base:
+                        i += 4
                         continue
-                    else:
-                        # account for the LOCK prefix
-                        # https://stackoverflow.com/a/8891781/11069175
-                        if elf[i:i+2] == "f0":
-                            i += 2
-                            continue
 
-                        resolved = False
-                        break
+                    # KASLR offset has been unnecessarily applied
+                    if live_base + off == elf_base:
+                        i += 4
+                        continue
+
+                    # account for the LOCK prefix
+                    # https://stackoverflow.com/a/8891781/11069175
+                    if elf[i:i+2] == "f0":
+                        i += 2
+                        continue
+
+                    resolved = False
+                    break
                 else:
                     i += 1
 
             if resolved:
                 self.same_count += 1
             else:
+                # print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
+                # print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
+
                 self.diff_count += 1
 
     def get_v_addr(self, symbol):
