@@ -674,11 +674,11 @@ class RkCheckFunctions(gdb.Command):
 
         i = 0
         for symbol in self.s.iter_symbols():
-            # i += 1
-            # if i < 32000:
-            #     continue
-            # if i > 34000:
-            #     break
+            i += 1
+            if i < 32000:
+                continue
+            if i > 34000:
+                break
 
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
@@ -846,7 +846,7 @@ class RkCheckFunctions(gdb.Command):
                     elf_base = int("0x" + elf[i+2:i+4] + elf[i:i+2], 16)
                     live_base = int("0x" + live[i+2:i+4] + live[i:i+2], 16)
 
-                    # print(name, "i:",i,"i:", i, "ELF, LIVE", hex(elf_base), hex(live_base))
+                    print(name, "i:", i, "ELF:" , hex(elf_base), "LIVE:", hex(live_base))
 
                     # KASLR offset has not yet been applied
                     if elf_base + off == live_base:
@@ -872,8 +872,8 @@ class RkCheckFunctions(gdb.Command):
             if resolved:
                 self.same_count += 1
             else:
-                # print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
-                # print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
+                print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
+                print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
 
                 self.diff_count += 1
 
