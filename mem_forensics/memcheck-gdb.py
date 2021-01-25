@@ -852,7 +852,7 @@ class RkCheckFunctions(gdb.Command):
 
                     # pattern: nop -> jmp
                     if elf[i:i+4] == "0f1f" and live[i:i+2] == "e9":
-                        i += 5
+                        i += 10
                         continue
 
                     resolved = False
