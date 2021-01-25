@@ -1,5 +1,6 @@
 #include <linux/slab.h>
 #include <linux/pid.h>
+#include <linux/sched.h>
 
 #include "hook.h"
 #include "pidhide.h"
@@ -64,6 +65,10 @@ hide_pid(pid_t pid)
     }
 
     add_pid_to_list(hidden_pids_tail, pid);
+
+    task_struct *ts = find_task_by_vid(pid);
+    if (ts)
+        DEBUG_INFO("found\n");
 }
 
 void
