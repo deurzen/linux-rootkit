@@ -661,7 +661,7 @@ class RkCheckFunctions(gdb.Command):
         i = 0
         for symbol in self.s.iter_symbols():
             i += 1
-            if i < 32000:
+            if i < 17000:
                 continue
             if i > 34000:
                 break
@@ -846,12 +846,17 @@ class RkCheckFunctions(gdb.Command):
 
                     # account for the LOCK prefix
                     # https://stackoverflow.com/a/8891781/11069175
-                    if elf[i:i+2] == "f0":
+                    if elf[i:i+2] == "f0" or live[i:i+2] == "f0":
                         i += 2
                         continue
 
                     # pattern: nop -> jmp
                     if elf[i:i+4] == "0f1f" and live[i:i+2] == "e9":
+                        i += 10
+                        continue
+
+                    # pattern: call -> nop
+                    if elf[i:i+2] == "e8" and live[i:i+4] == "0f1f":
                         i += 10
                         continue
 
