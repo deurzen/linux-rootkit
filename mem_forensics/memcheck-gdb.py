@@ -638,7 +638,7 @@ class RkCheckFunctions(gdb.Command):
         self.compare_functions()
         print(" done!")
 
-        print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} (symbols) skipped")
+        print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} symbols skipped")
 
 
     def fill_code_dict(self):
@@ -658,14 +658,7 @@ class RkCheckFunctions(gdb.Command):
         gdb.execute(f"add-inferior -exec {tmp} -no-connection")
         gdb.execute("inferior 2")
 
-        i = 0
         for symbol in self.s.iter_symbols():
-            i += 1
-            if i < 17000:
-                continue
-            if i > 34000:
-                break
-
             if symbol.entry["st_info"]["type"] == "STT_FUNC":
                 name = symbol.name
                 size = symbol.entry["st_size"]
@@ -746,8 +739,6 @@ class RkCheckFunctions(gdb.Command):
         #    u16  clobbers;   /* what registers you may clobber */
         #};
 
-        # TODO: KASLR!
-
         sec = self.f.get_section_by_name(".parainstructions")
         data = sec.data()
 
@@ -827,12 +818,11 @@ class RkCheckFunctions(gdb.Command):
             max_len = len(live)
             resolved = True
 
+            # loop over bytes character-by-character
             while i < max_len:
                 if live[i] != elf[i]:
                     elf_base = int("0x" + elf[i+2:i+4] + elf[i:i+2], 16)
                     live_base = int("0x" + live[i+2:i+4] + live[i:i+2], 16)
-
-                    print(name, "i:", i, "ELF:" , hex(elf_base), "LIVE:", hex(live_base))
 
                     # KASLR offset has not yet been applied
                     if elf_base + off == live_base:
@@ -868,9 +858,7 @@ class RkCheckFunctions(gdb.Command):
             if resolved:
                 self.same_count += 1
             else:
-                print(f"function `{name}` compromised, live bytes not equal to ELF bytes")
-                print(f"excluded: {to_exclude}, expected: {elf}, live: {live}")
-
+                print(name)
                 self.diff_count += 1
 
     def get_v_addr(self, symbol):
