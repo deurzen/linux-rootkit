@@ -624,20 +624,6 @@ class RkCheckFunctions(gdb.Command):
             print("no object file has been read in to calculate offsets, please run `rk-load-symbols` first")
             return None
 
-        md5sum = subprocess.check_output(f"md5sum {file_g}", shell=True).split()[0]
-
-        path = None
-        for root, dirs, files in os.walk("."):
-            if "runtime" in dirs:
-                path = os.path.join(root, f"runtime")
-                break
-
-        if path:
-            with open(f"{path}/md5sum") as f:
-                if md5sum.decode(sys.stdout.encoding) == f.readline().strip():
-                    print("using memoized ELF data stored in `runtime/{func,altinstr,paravirt}`")
-                    self.use_memoization = True
-
         self.f = elffile.ELFFile(open(file_g, "rb"))
         self.s = self.f.get_section_by_name(".symtab")
 
@@ -862,6 +848,10 @@ class RkCheckFunctions(gdb.Command):
                     # https://stackoverflow.com/a/8891781/11069175
                     if elf[i:i+2] == "f0":
                         i += 2
+                        continue
+
+                    if elf[i:i+4] == "0f1f" and live[i:i+2] == "e9":
+                        i += 5
                         continue
 
                     resolved = False
