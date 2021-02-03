@@ -21,33 +21,6 @@ fi
 
 echo "Generating file cscope.files.."
 find  $1 \
-	-path "$1arch/alpha*" -prune -o \
-	-path "$1arch/arc*" -prune -o \
-	-path "$1arch/arm*" -prune -o \
-	-path "$1arch/arm64*" -prune -o \
-	-path "$1arch/c6x*" -prune -o \
-	-path "$1arch/h8300*" -prune -o \
-	-path "$1arch/hexagon*" -prune -o \
-	-path "$1arch/ia64*" -prune -o \
-	-path "$1arch/m68k*" -prune -o \
-	-path "$1arch/microblaze*" -prune -o \
-	-path "$1arch/mips*" -prune -o \
-	-path "$1arch/nds32*" -prune -o \
-	-path "$1arch/nios2*" -prune -o \
-	-path "$1arch/openrisc*" -prune -o \
-	-path "$1arch/parisc*" -prune -o \
-	-path "$1arch/powerpc*" -prune -o \
-	-path "$1arch/riscv*" -prune -o \
-	-path "$1arch/s390*" -prune -o \
-	-path "$1arch/sh*" -prune -o \
-	-path "$1arch/sparc*" -prune -o \
-	-path "$1arch/um*" -prune -o \
-	-path "$1arch/unicore32*" -prune -o \
-	-path "$1arch/xtensa*" -prune -o \
-	-path "$1drivers*" -prune -o \
-    -path "$1Documentation*" -prune -o \
-    -path "$1scripts*" -prune -o \
-    -path "$1tools*" -prune -o \
     -name "*.[chxsS]" -print > ./cscope.files
 echo "Done!"
 
