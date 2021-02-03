@@ -1,3 +1,8 @@
 /debian.img
 /up.sh
 /.gdb_history
+.dict
+.funcs
+cscope.files
+cscope.out
+vmlinux

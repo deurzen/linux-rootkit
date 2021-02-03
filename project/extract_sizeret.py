@@ -20,12 +20,6 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         gdb.Breakpoint.__init__(self, b)
 
     def stop(self):
-        global break_arg
-        global args
-        global entries
-        global exits
-        global prev_entry
-
         f = gdb.newest_frame()
 
         if not f.is_valid():
@@ -34,19 +28,24 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         if f.unwind_stop_reason() != gdb.FRAME_UNWIND_NO_REASON:
             return False
 
+        self.extract(f)
+
+        return True
+
+    def extract(self, frame):
+        global break_arg
+        global entries
+        global exits
+        global prev_entry
+
         if self.number in entries:
             # extract size from correct register
-            if int(gdb.parse_and_eval(break_arg[f.name()])) > 0:
-                prev_entry = f"size={gdb.parse_and_eval(break_arg[f.name()])}"
-
+            if int(gdb.parse_and_eval(break_arg[frame.name()])) > 0:
+                prev_entry = f"size={gdb.parse_and_eval(break_arg[frame.name()])}"
         elif self.number in exits and prev_entry is not None:
             # extract return value, print for now
             print(f"{prev_entry}, ret={hex(int(str(gdb.parse_and_eval('$rax')), 10) & (2 ** 64 - 1))}", flush=True)
             prev_entry = None
-
-        # TODO: extract filename
-
-        return False
 
 class Stage3():
     breakpoints = []
