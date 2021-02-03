@@ -634,9 +634,10 @@ class RkCheckFunctions(gdb.Command):
         self.fill_paravirt_dict()
         print(" done!")
 
-        print("comparing functions...", end='', flush=True)
+        print("comparing functions...")
+        print("listing functions that differ", flush=True)
         self.compare_functions()
-        print(" done!")
+        print("...done!")
 
         print(f"{self.diff_count} functions differ, {self.same_count} are equal, {self.skip_count} symbols skipped")
 
