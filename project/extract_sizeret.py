@@ -39,10 +39,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             if int(gdb.parse_and_eval(break_arg[f.name()])) > 0:
                 prev_entry = f"size={gdb.parse_and_eval(break_arg[f.name()])}"
 
-        elif self.number in exits:
-            if prev_entry is None:
-                return False
-
+        elif self.number in exits and prev_entry is not None:
             # extract return value, print for now
             print(f"{prev_entry}, ret={hex(int(str(gdb.parse_and_eval('$rax')), 10) & (2 ** 64 - 1))}", flush=True)
             prev_entry = None
