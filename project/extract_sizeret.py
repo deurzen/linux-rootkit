@@ -114,7 +114,7 @@ class Stage3():
             disass = gdb.execute(f"disass {b}", to_string=True).strip().split("\n")
             disass = [instr.split("\t") for instr in disass]
             instrs = [(instr[0].strip(), instr[1].split(" ")[0].strip()) for instr in disass if len(instr) > 1]
-            retqs = [int(loc.split("<")[1].split(">")[0]) for (loc, instr) in instrs if instr == "retq"]
+            retqs = [int(loc.split("<")[1].split(">")[0]) for (loc, instr) in instrs if instr == "ret" or instr == "retq"]
 
             # set breakpoints at function exits (retq), to extract return value
             for retq in retqs:
