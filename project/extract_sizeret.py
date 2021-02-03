@@ -6,9 +6,9 @@ import json
 
 # allocator mapped to register containing size argument
 break_arg = {
-    "kmem_cache_alloc_trace": "$rdx",
-    "kmalloc_order": "$rdi",
-    "__kmalloc": "$rdi",
+    "kmem_cache_alloc_trace": "rdx",
+    "kmalloc_order": "rdi",
+    "__kmalloc": "rdi",
 }
 
 entries = set()
@@ -31,8 +31,14 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         if f.unwind_stop_reason() != gdb.FRAME_UNWIND_NO_REASON:
             return False
 
+        t = self.type_lookup(f)
+
+        if t is None:
+            return False
+
         self.extract(f)
-        self.type_lookup(f)
+
+        print(t, prev_entry)
 
         return False
 
@@ -44,11 +50,11 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         if self.number in entries:
             # extract size from correct register
-            if int(gdb.parse_and_eval(break_arg[frame.name()])) > 0:
-                prev_entry = f"size={gdb.parse_and_eval(break_arg[frame.name()])}"
+            if int(frame.read_register(break_arg[frame.name()])) > 0:
+                prev_entry = f"size={frame.read_register(break_arg[frame.name()])}"
         elif self.number in exits and prev_entry is not None:
             # extract return value, print for now
-            print(f"{prev_entry}, ret={hex(int(str(gdb.parse_and_eval('$rax')), 10) & (2 ** 64 - 1))}", flush=True)
+            print(f"{prev_entry}, ret={hex(int(str(frame.read_register('rax')), 10) & (2 ** 64 - 1))}", flush=True)
             prev_entry = None
 
     def type_lookup(self, frame):
@@ -66,9 +72,11 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             key = f"{symtab.filename}:{sym.line}"
 
             if key in types:
-                print(types[key])
+                return types[key]
 
             f_iter = f_iter.older()
+
+        return None
 
 class Stage3():
     breakpoints = []
