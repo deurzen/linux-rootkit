@@ -51,7 +51,8 @@ class CodeDict():
     def parse(self):
         ignore = ["*", "->", "(", ")", "[", "]"]
 
-        dir = len(self.inf.readline()) - 1
+        line = self.inf.readline()
+        dir = len(line) - 1 if line[-1] == "/" else len(line)
 
         for line in self.inf.readlines():
             # Remove directory prefix, insert ./ to reflect the frame representation of source file in gdb
