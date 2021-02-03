@@ -13,10 +13,22 @@ break_arg = {
 
 entries = set()
 exits = set()
+types = {}
+
+# Contains tuples of (type, size, addr, caller)
+mem_map = set()
 
 prev_entry = None
 
-types = {}
+class PrintMem(gdb.Command):
+    def __init__(self):
+        super(PrintMem, self).__init__("print-mem", gdb.COMMAND_DATA)
+
+    def invoke(self, arg):
+        global mem_map
+
+PrintMem()
+
 
 class EntryExitBreakpoint(gdb.Breakpoint):
     def __init__(self, b):
