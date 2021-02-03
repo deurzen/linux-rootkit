@@ -24,8 +24,9 @@ class PrintMem(gdb.Command):
     def __init__(self):
         super(PrintMem, self).__init__("print-mem", gdb.COMMAND_DATA)
 
-    def invoke(self, arg):
+    def invoke(self, arg, from_tty):
         global mem_map
+        print(mem_map)
 
 PrintMem()
 
@@ -48,10 +49,12 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         if t is None:
             return False
 
-        self.extract(f)
+        retval = self.extract(f)
 
-        print(t, prev_entry)
-
+        if retval is None:
+            return False
+            
+        mem_map.add((t[0], retval[0], retval[1], t[1]))
         return False
 
     def extract(self, frame):
@@ -64,10 +67,12 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             # extract size from correct register
             if int(frame.read_register(break_arg[frame.name()])) > 0:
                 prev_entry = f"size={frame.read_register(break_arg[frame.name()])}"
+                return None
         elif self.number in exits and prev_entry is not None:
             # extract return value, print for now
-            print(f"{prev_entry}, ret={hex(int(str(frame.read_register('rax')), 10) & (2 ** 64 - 1))}", flush=True)
+            ret = (prev_entry, (hex(int(str(frame.read_register('rax')), 10) & (2 ** 64 - 1))))
             prev_entry = None
+            return ret
 
     def type_lookup(self, frame):
         global types
@@ -84,7 +89,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             key = f"{symtab.filename}:{sym.line}"
 
             if key in types:
-                return types[key]
+                return (types[key], key)
 
             f_iter = f_iter.older()
 
