@@ -15,3 +15,4 @@
 /rkctl
 /tags
 /*.o.d
+/src/*.o.d
