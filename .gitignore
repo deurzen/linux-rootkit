@@ -17,3 +17,5 @@
 /*.o.d
 /.gdb_history
 /.tmpvml
+/debian.img
+/up.sh
