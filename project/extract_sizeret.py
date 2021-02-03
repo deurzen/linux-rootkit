@@ -35,7 +35,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             return False
 
         if self.number in entries:
-            # extract size from correct register, print for now
+            # extract size from correct register
             if int(gdb.parse_and_eval(break_arg[f.name()])) > 0:
                 prev_entry = f"size={gdb.parse_and_eval(break_arg[f.name()])}"
 
