@@ -78,8 +78,5 @@ class CodeDict():
 
             if type_info is not None:
                 key = f"{src}:{lnr}"
-                self.dict[key] = type_info
-
-        print(self.dict)
-
+                self.dict[key] = type_info.replace('\n','')
 CodeDict()
