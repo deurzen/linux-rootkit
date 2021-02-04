@@ -1,6 +1,6 @@
 #!/bin/bash
 #Extract all occurences of function calls and the assigned variables from kernel sources
-funcs=("kmalloc" "kzalloc" "kfree")
+funcs=("kmalloc" "kzalloc")
 out=".funcs"
 
 rm -f cscope.out cscope.files $out
