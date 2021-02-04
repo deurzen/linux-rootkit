@@ -54,17 +54,21 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         if frame.unwind_stop_reason() != gdb.FRAME_UNWIND_NO_REASON:
             return False
 
-        type = self.type_lookup(frame)
+        typeret = self.type_lookup(frame)
 
-        if type is None:
+        if typeret is None:
             return False
 
-        ret = self.extract(frame)
+        (type, caller) = typeret
 
-        if ret is None:
+        extret = self.extract(frame)
+
+        if extret is None:
             return False
 
-        mem_map[ret[1]] = (type[0][7:], ret[0], type[1])
+        (size, address) = extret
+
+        mem_map[address] = (type, size, caller)
         return False
 
     def extract(self, frame):
