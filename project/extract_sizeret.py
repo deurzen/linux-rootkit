@@ -11,6 +11,11 @@ break_arg = {
     "__kmalloc": "rdi",
 }
 
+free_funcs = {
+    "kfree": "rdi",
+    "kmem_cache_free" : "rsi"
+}
+
 entries = set()
 exits = set()
 types = {}
@@ -26,6 +31,9 @@ class PrintMem(gdb.Command):
 
     def invoke(self, arg, from_tty):
         global mem_map
+
+        if not mem_map:
+            return None
 
         for addr, (type, size, caller) in mem_map.items():
             print(f"type: {type}, size: {size}, addr: {hex(addr)}, caller: {caller}")
@@ -98,6 +106,30 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         return None
 
+class FreeBreakpoint(gdb.Breakpoint):
+    def __init__(self, b):
+        gdb.Breakpoint.__init__(self, b)
+
+    def stop(self):
+        global mem_map
+        global free_funcs
+
+        frame = gdb.newest_frame()
+
+        if not frame.is_valid():
+            return False
+
+        x = int(frame.read_register(free_funcs[frame.name()])) & (2 ** 64 - 1)
+
+        if x is None:
+            return False
+
+        if x in mem_map:
+            print("Freeing ", mem_map[x])
+            mem_map.pop(x)
+
+        return False
+
 class Stage3():
     breakpoints = []
 
@@ -129,5 +161,9 @@ class Stage3():
                 b_exit = EntryExitBreakpoint(f"*{hex(int(str(gdb.parse_and_eval(b).address).split(' ')[0], 16) + retq)}")
                 self.breakpoints.append(b_exit)
                 exits.add(b_exit.number)
+
+        for f in free_funcs:
+            FreeBreakpoint(f)
+
 
 Stage3()
