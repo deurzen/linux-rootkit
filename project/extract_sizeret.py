@@ -18,7 +18,7 @@ types = {}
 # Maps address to tuples of (type, size, caller)
 mem_map = {}
 
-prev_entry = None
+size_at_entry = None
 
 class PrintMem(gdb.Command):
     def __init__(self):
@@ -26,7 +26,9 @@ class PrintMem(gdb.Command):
 
     def invoke(self, arg, from_tty):
         global mem_map
-        print(mem_map)
+
+        for addr, (type, size, caller) in mem_map.items():
+            print(f"type: {type}, size: {size}, addr: {hex(addr)}, caller: {caller}")
 
 PrintMem()
 
@@ -36,50 +38,51 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         gdb.Breakpoint.__init__(self, b)
 
     def stop(self):
-        f = gdb.newest_frame()
+        frame = gdb.newest_frame()
 
-        if not f.is_valid():
+        if not frame.is_valid():
             return False
 
-        if f.unwind_stop_reason() != gdb.FRAME_UNWIND_NO_REASON:
+        if frame.unwind_stop_reason() != gdb.FRAME_UNWIND_NO_REASON:
             return False
 
-        t = self.type_lookup(f)
+        type = self.type_lookup(frame)
 
-        if t is None:
+        if type is None:
             return False
 
-        retval = self.extract(f)
+        ret = self.extract(frame)
 
-        if retval is None:
+        if ret is None:
             return False
-            
-        mem_map[retval[1]] = (t[0], retval[0], t[1])
+
+        mem_map[ret[1]] = (type[0][7:], ret[0], type[1])
         return False
 
     def extract(self, frame):
         global break_arg
         global entries
         global exits
-        global prev_entry
+        global size_at_entry
 
         if self.number in entries:
             # extract size from correct register
             if int(frame.read_register(break_arg[frame.name()])) > 0:
-                prev_entry = f"size={frame.read_register(break_arg[frame.name()])}"
+                size_at_entry = int(frame.read_register(break_arg[frame.name()]))
                 return None
-        elif self.number in exits and prev_entry is not None:
+
+        elif self.number in exits and size_at_entry is not None:
             # extract return value, return tuple (size, address)
-            ret = (prev_entry, (hex(int(str(frame.read_register('rax')), 10) & (2 ** 64 - 1))))
-            prev_entry = None
+            ret = (size_at_entry, int(frame.read_register('rax')) & (2 ** 64 - 1))
+            size_at_entry = None
             return ret
 
     def type_lookup(self, frame):
         global types
 
         f_iter = frame.older()
-        
-        while f_iter is not None and f_iter.is_valid() :
+
+        while f_iter is not None and f_iter.is_valid():
             sym = f_iter.find_sal()
             symtab = sym.symtab
 
