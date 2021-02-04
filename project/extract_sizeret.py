@@ -15,8 +15,8 @@ entries = set()
 exits = set()
 types = {}
 
-# Contains tuples of (type, size, addr, caller)
-mem_map = set()
+# Maps address to tuples of (type, size, caller)
+mem_map = {}
 
 prev_entry = None
 
@@ -54,7 +54,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         if retval is None:
             return False
             
-        mem_map.add((t[0], retval[0], retval[1], t[1]))
+        mem_map[retval[1]] = (t[0], retval[0], t[1])
         return False
 
     def extract(self, frame):
@@ -69,7 +69,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
                 prev_entry = f"size={frame.read_register(break_arg[frame.name()])}"
                 return None
         elif self.number in exits and prev_entry is not None:
-            # extract return value, print for now
+            # extract return value, return tuple (size, address)
             ret = (prev_entry, (hex(int(str(frame.read_register('rax')), 10) & (2 ** 64 - 1))))
             prev_entry = None
             return ret
