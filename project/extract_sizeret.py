@@ -197,7 +197,11 @@ class Stage3():
         global exits
         global types
 
+        # system can hang when pagination is on
         gdb.execute("set pagination off")
+
+        # for rk-data
+        gdb.execute("set print pretty on")
 
         with open(self.dictfile, 'r') as dct:
             types = json.load(dct)
