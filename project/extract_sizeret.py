@@ -22,7 +22,8 @@ break_arg = {
 free_funcs = {
     # *v*free variants all call kfree
     "kfree": "rdi",
-    "kmem_cache_free" : "rsi",
+    "vfree": "rdi",
+    "kmem_cache_free": "rsi"
 }
 
 entries = set()
