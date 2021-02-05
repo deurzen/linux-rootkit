@@ -23,7 +23,7 @@
 \usepackage{listings}
 \usepackage{booktabs}
 \usepackage{dcolumn}
-\usepackage[defaultmono, scale = .8]{droidmono}
+\usepackage[defaultmono, scale = .8]{droidsansmono}
 \usepackage{palatino}
 \usepackage{url}
 \usepackage{pifont}
@@ -141,9 +141,9 @@
 
 % META
 % =========================================================
-\title[RE-Seminar Winter 16/17]{Seminar Reverse Code Engineering}
-\author[J. Kirsch et al.]{Julian Kirsch, Thomas Kittel, Sergej Proskurin}
-\semester{Wintersemester 2016/17}
-\institute{Lehrstuhl für Sicherheit in der Informatik}
-\date{\today}
+\title[None]{Rootkit Programming - Final Presentation}
+\author[Max v. D., Tizian L.]{Max van Deurzen, Tizian Leonhardt}
+\semester{Wintersemester 2020/21}
+\institute{}
+\date{10. February, 2021}
 % =========================================================
