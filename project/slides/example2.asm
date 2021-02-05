@@ -1,0 +1,31 @@
+
+	BITS 64
+	global _start
+	section .text
+_start:
+	push rax
+	push rdx
+	push rsi
+	push rdi
+	mov rax, 1
+	mov rdi, 0
+	mov rsi, memfrobbed
+	mov rdx, 0x18
+	syscall
+	pop rdi
+	pop rsi
+	pop rdx
+	pop rax
+	ret
+
+_my_memfrob:
+	xor byte [rdi+rcx-1], 0x42
+	loop _my_memfrob
+	ret
+
+	section .data
+memfrobbed:
+	;db "53cr3t_p4yl04d_g035_h3r3", 0
+	db 0x77, 0x71, 0x21, 0x30, 0x71, 0x36, 0x1d, 0x32
+	db 0x76, 0x3b, 0x2e, 0x72, 0x76, 0x26, 0x1d, 0x25
+	db 0x72, 0x71, 0x77, 0x1d, 0x2a, 0x71, 0x30, 0x71

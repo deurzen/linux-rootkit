@@ -1,0 +1,101 @@
+\documentclass{i20lecture}
+
+\subtitle{Session 0}
+
+\begin{document}
+
+\frame{\titlepage}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+  \frametitle{First Slide}
+
+  \begin{itemize}
+    \item Whatever
+  \end{itemize}
+
+\end{frame}
+
+\section{First Section}
+\subsection{Assembly Demo}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+  \frametitle{\insertsection}
+  \framesubtitle{\insertsubsection}
+  \begin{center}
+    \vspace{-.8cm}
+    \begin{tikzpicture}[transform shape]
+      \node at (\textwidth*.28, 0) {};
+      \node at (\textwidth, \textheight/2) {};
+      \node at (\textwidth/2, \textheight/2) {};
+      \node at (\textwidth/2, -\textheight/2) {};
+      \only<2->{
+	\node[yshift=-.2cm, above = 0cm of main.center, draw=BrickRed,
+	  minimum width=.42\textwidth, ultra thick, minimum height = .5cm,
+	  rounded corners] (redmark) {\hfill};
+      }
+      \node (main) at (.5\textwidth, 0) {
+        \parbox{.4\textwidth}{
+        \lstinputlisting[firstline=4, lastline=14, language={[x86masm]Assembler}]
+          {example1.asm}
+        }
+      };
+      \node[right = .08\textwidth of main] (memfrobbed) {
+	\only<1-2>{\parbox{.4\textwidth}{
+        \lstinputlisting[firstnumber=12, firstline=16, lastline=19, language={[x86masm]Assembler}]
+          {example1.asm}
+        \lstinputlisting[firstnumber=16, firstline=21, lastline=28, language={[x86masm]Assembler}]
+          {example1.asm}
+	}}
+        \only<3->{\parbox{.4\textwidth}{
+	  \lstset{rulecolor=\color{BrickRed}}
+        \lstinputlisting[firstline=6, lastline=18, language={[x86masm]Assembler}]
+          {example2.asm}
+        }}
+      };
+      \path[thick, color = BrickRed, ->,>=stealth, out = 30, in = 120,
+        shorten >=1pt]<3->
+	  (redmark.east) edge ($(memfrobbed.north west)+(.5,-.2)$);
+      \path[thick, color = BrickRed, ->,>=stealth, out = 240, in = 30,
+        shorten >=1pt]<5->
+	  ($(memfrobbed.south west)+(.5,.3)$) edge ($(redmark.east)+(-1.7,-.5)$);
+    \end{tikzpicture}
+    \begin{tikzpicture}[overlay]
+      \only<4>{
+	\node[minimum width = \textwidth/2, minimum height = 3cm, fill = Black,
+        text = ForestGreen] at (-\textwidth/2, \textheight/2){
+          \parbox{\textwidth/2}{
+            \ttfamily \$ ./analyzed\_binary \\
+	    \ldots \\
+	    53cr3t\_p4yl04d\_g035\_h3r3 \\
+	    \ldots \\
+	    \$
+          }
+        }
+      };
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+\subsection{Content}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+  \frametitle{\insertsection}
+  \framesubtitle{\insertsubsection}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+  \frametitle{Questions?}
+
+  \begin{center}
+    \LARGE Thanks!
+  \end{center}
+
+\end{frame}
+
+\end{document}

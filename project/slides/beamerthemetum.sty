@@ -1,0 +1,319 @@
+% This program can be redistributed and/or modified under the terms
+% of the GNU Public License, version 3.
+
+\usepackage{MnSymbol}
+\usepackage{helvet}
+
+\newcommand\semester[1]{\renewcommand\@semester{#1}}
+\newcommand\@semester{}
+
+% switch for 'dark' option
+\newif\ifyourpkgprefix@darkoption\yourpkgprefix@darkoptionfalse
+% switch for 'en' option
+\newif\ifyourpkgprefix@enoption\yourpkgprefix@enoptionfalse
+% switch for 'minimal' option
+\newif\ifyourpkgprefix@minimaloption\yourpkgprefix@minimaloptionfalse
+% switch for 'wide' option
+\newif\ifyourpkgprefix@wideoption\yourpkgprefix@wideoptionfalse
+
+
+\DeclareOption{dark}{\yourpkgprefix@darkoptiontrue}
+\DeclareOption{en}{\yourpkgprefix@enoptiontrue}
+\DeclareOption{minimal}{\yourpkgprefix@minimaloptiontrue}
+\DeclareOption{wide}{\yourpkgprefix@wideoptiontrue}
+
+\DeclareOption*{\OptionNotUsed} % discard any undeclared option
+
+\ProcessOptions\relax
+
+\newlength{\logoindent} %% Left and right margin on title page
+\setlength{\logoindent}{.5cm}
+
+\newlength{\headmargin} %% Left and right margin for title text line
+\setlength{\headmargin}{.1cm}
+
+\ifyourpkgprefix@enoption
+\usepackage{babel}
+\else
+\usepackage[ngerman]{babel}
+\fi
+
+\ifyourpkgprefix@wideoption
+\geometry{paperwidth=170.66mm,paperheight=96mm}  % 16:9
+\else
+\geometry{paperwidth=128mm,paperheight=96mm} % 4:3
+\fi
+
+\setbeamerfont{title}{size=\Large}
+\setbeamerfont{subtitle}{size=\normalsize}
+
+\mode<presentation>
+
+\newif\ifbeamer@secheader
+\beamer@secheaderfalse
+
+\DeclareOptionBeamer{secheader}{\beamer@secheadertrue}
+\ProcessOptionsBeamer
+
+%% TUM Corporate Design Colors
+\definecolor{tumblue}{RGB}{0,101,189}
+\definecolor{primary-blue}{RGB}{0,101,189}
+\definecolor{primary-white}{RGB}{255,255,255}
+\definecolor{primary-black}{RGB}{0,0,0}
+
+\definecolor{secondary-grey-0}{RGB}{204,204,204}
+\definecolor{secondary-grey-1}{RGB}{127,127,127}
+\definecolor{secondary-grey-2}{RGB}{51,51,51}
+
+\definecolor{secondary-blue}{RGB}{0,82,147}
+
+\definecolor{secondary-dark-0}{RGB}{0,51,89}
+\definecolor{secondary-dark-1}{RGB}{0,40,71}
+\definecolor{secondary-dark-2}{RGB}{0,25,44}
+\definecolor{secondary-dark-3}{RGB}{0,10,17}
+
+\definecolor{emph-0}{RGB}{152,198,234} % light blue
+\definecolor{emph-1}{RGB}{100,160,200} % dark blue
+\definecolor{emph-2}{RGB}{218,215,203} % ivory
+\definecolor{emph-3}{RGB}{227,114,34}  % orange
+\definecolor{emph-4}{RGB}{162,173,0}   % green
+
+\definecolor{blue}{RGB}{0,101,189}
+
+% OLD legacy colors
+% =========================================================
+
+\ifyourpkgprefix@darkoption
+  \colorlet{primary}{primary-white}
+  \definecolor{secondary}{RGB}{0,82,147}
+  \definecolor{tertiary}{RGB}{227,114,34}
+  \definecolor{quarterly}{RGB}{162,173,0}
+\else
+  \colorlet{primary}{primary-white}
+  \definecolor{secondary}{RGB}{0,82,147}
+  \definecolor{tertiary}{RGB}{227,114,34}
+  \definecolor{quarterly}{RGB}{162,173,0}
+\fi
+\setbeamercolor{palette primary}{fg=white, bg=primary}
+\setbeamercolor{palette secondary}{fg=white, bg=primary}
+\setbeamercolor{palette tertiary}{fg=white, bg=primary}
+\setbeamercolor{title}{fg=primary, bg=white}
+\setbeamercolor{frametitle}{fg=white, bg=primary}
+\setbeamercolor{titlelike}{fg=primary}
+\setbeamercolor{section number projected}{fg=white, bg=primary}
+\setbeamercolor{item projected}{bg=primary}
+\setbeamercolor{subitem projected}{bg=primary}
+\setbeamercolor{subsubitem projected}{fg=primary}
+\setbeamercolor{itemize item}{fg=emph-4}
+\setbeamercolor{itemize subitem}{fg=emph-4}
+\setbeamercolor{itemize subsubitem}{fg=emph-4}
+\setbeamercolor{enumerate subitem}{fg=white}
+\setbeamercolor{description item}{fg=primary}
+\setbeamercolor{section in toc}{fg=primary}
+\setbeamercolor{alerted text}{fg=tertiary}
+\setbeamercolor{block title alerted}{fg=white, bg=primary}
+\setbeamercolor{block body alerted}{bg=white}
+\setbeamercolor{block title example}{fg=white, bg=primary}
+\setbeamercolor{block body example}{bg=white}
+\setbeamercolor{block body}{bg=white}
+% =========================================================
+
+
+%%% New and shiny color definitions obeying the 'dark' switch
+\pgfdeclareverticalshading[lower.bg,upper.bg]{bmb@transition}{200cm}{color(0pt)=(lower.bg); color(4pt)=(lower.bg); color(4pt)=(upper.bg)}
+
+\newcommand\ttt[1]{{\fdmfamily \footnotesize{#1}}}
+\newcommand\hl[1]{\textbf{\textcolor{emph-3}{#1}}}
+\renewcommand\emph[1]{{\textcolor{tumblue}{#1}}}
+
+\ifyourpkgprefix@darkoption
+  % Blocks
+  \setbeamertemplate{blocks}[rounded][shadow]
+  \setbeamercolor{block title}{fg=white,bg=primary-blue}
+  \setbeamercolor{block body}{fg=black,bg=primary-black!80}
+
+  \setbeamercolor{alerted text}{fg=tumblue}
+
+  % Footer
+  \setbeamercolor*{left foot}{fg=white,bg=primary-black!80}
+  \setbeamercolor*{mid foot}{fg=white,bg=primary-black!80}
+  \setbeamercolor*{right foot}{fg=white,bg=primary-black!80}
+
+  % Head background
+  \setbeamercolor*{back title}{fg=white,bg=primary-black!80} % Head bg
+
+  \setbeamercolor{normal text}{fg=white,bg=primary-black!90}
+  \setbeamercolor{structure}{fg=white}
+  \setbeamercolor{item projected}{use=item,fg=white,bg=item.fg!35}
+  \setbeamercolor*{palette primary}{use=structure,fg=structure.fg}
+  \setbeamercolor*{palette secondary}{use=structure,fg=structure.fg!95!black}
+  \setbeamercolor*{palette tertiary}{use=structure,fg=structure.fg!90!black}
+  \setbeamercolor*{palette quaternary}{use=structure,fg=structure.fg!95!black,bg=black!80}
+  \setbeamercolor*{framesubtitle}{fg=white}
+  \setbeamercolor*{subtitle}{fg=emph-4}
+  \setbeamercolor*{block title}{parent=structure,bg=black!60}
+  \setbeamercolor*{block body}{fg=black,bg=black!10}
+  \setbeamercolor*{block title alerted}{parent=alerted text,bg=black!15}
+  \setbeamercolor*{block title example}{parent=example text,bg=black!15}
+\else
+  % Blocks
+  \setbeamertemplate{blocks}[rounded][shadow]
+  \setbeamercolor{block title}{fg=white,bg=primary-blue}
+  \setbeamercolor{block body}{fg=black,bg=primary-black!80}
+
+  \setbeamercolor*{left foot}{fg=white,bg=secondary-blue}
+  \setbeamercolor*{mid foot}{fg=white,bg=secondary-blue}
+  \setbeamercolor*{right foot}{fg=white,bg=secondary-blue}
+  \setbeamercolor*{back title}{fg=white,bg=secondary-blue}
+
+  % Head background
+  \setbeamercolor*{back title}{fg=white,bg=secondary-blue}
+
+  \setbeamercolor{alerted text}{fg=tumblue}
+
+  \setbeamercolor*{itemize item}{fg=tumblue}
+  \setbeamercolor*{itemize subitem}{fg=tumblue}
+  \setbeamercolor*{itemize subsubitem}{fg=tumblue}
+
+  \setbeamercolor*{description item}{fg=tumblue}
+  \setbeamercolor*{enumerate item}{fg=tumblue}
+  \setbeamercolor*{enumerate subitem}{fg=tumblue}
+  \setbeamercolor*{enumerate subsubitem}{fg=tumblue}
+  \setbeamercolor*{caption name}{fg=tumblue}
+
+\fi
+
+\setbeamercolor{title}{fg=primary-blue}
+
+\setbeamertemplate{navigation symbols}{}
+%\setbeamertemplate{enumerate items}[square]
+
+\setbeamertemplate{frametitle}
+{
+  \vspace{-1ex}
+  \begin{beamercolorbox}[wd=\paperwidth,ht=1cm,dp=0.4cm]{back title}
+    \makebox[\textwidth]{
+      \makebox[\headmargin]{ }
+        \parbox{.8\textwidth}{
+	  \begin{tikzpicture}
+            \node[inner sep = 0pt, outer sep = 0pt, text width = .9\textwidth,
+		  font = \strut, align = left] (t)
+		  {\LARGE\insertframetitle};
+            \node[inner sep = 0pt, outer sep = 0pt, text width = .9\textwidth,
+		  below = 0cm of t, font = \strut, align = left, yshift = .25cm]
+		  {\scriptsize\insertframesubtitle};
+          \end{tikzpicture}
+        }
+	\hfill
+        \parbox{.065\textwidth}{\vspace*{-.2cm}
+          \resizebox{!}{2ex}{
+            \begin{tikzpicture}[y = -.75cm, x = .75cm, transform shape]
+              \tikzset{logofont/.style={
+                align = left, text width = 6cm, font=\vphantom{TUMy}
+              }}
+              \ifyourpkgprefix@enoption
+	              \node[logofont] at (-6, 0.7)
+                  {\fontsize{1.2cm}{1.25cm}\selectfont \sffamily Technical};
+                \node[logofont] at (-6, 2.7)
+                  {\fontsize{1.2cm}{1.25cm}\selectfont \sffamily University};
+                \node[logofont] at (-6, 4.4)
+                  {\fontsize{1.2cm}{1.25cm}\selectfont \sffamily of Munich};
+              \else
+	              \node[logofont] at (-6, 0.7)
+                  {\fontsize{1.2cm}{1.25cm}\selectfont \sffamily Technische};
+                \node[logofont] at (-6, 2.55)
+                  {\fontsize{1.2cm}{1.25cm}\selectfont \sffamily Universit\"at};
+                \node[logofont] at (-6, 4.4)
+                  {\fontsize{1.2cm}{1.25cm}\selectfont \sffamily M\"unchen};
+              \fi
+              \fill [primary-white]
+                (0, 0) -- (4, 0) -- (4, 4) -- (5, 4) -- (5, 0) -- (10, 0) --
+                (10, 5) -- (9, 5) -- (9, 1) -- (8, 1) -- (8, 5) -- (7, 5) --
+                (7, 1) -- (6, 1) -- (6, 5) -- (3, 5) -- (3, 1) -- (2, 1) --
+                (2, 5) -- (1, 5) -- (1, 1) -- (0, 1) -- cycle;
+            \end{tikzpicture}
+          }
+        }
+      \makebox[\headmargin]{ }
+    }
+  \end{beamercolorbox}
+}
+
+\defbeamertemplate*{title page}{tum theme}[1][]
+{
+  \makebox[\textwidth]{
+    \makebox[\logoindent]{ }
+    \begin{tikzpicture}[scale=0.4, every node/.style={scale = .4}]
+      \draw[anchor = north west] (0, 0) arc (95:445:1cm) [thick, draw = primary-blue];
+      \draw[anchor = north west] (0.09, 0.2) -- (0.09, -1.8) [thick, draw = primary-blue];
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[x = .18cm, y = -.18cm, transform shape]
+      \fill [primary-blue] (0, 0) -- (4, 0) -- (4, 4) -- (5, 4) -- (5, 0) -- (10, 0) --
+            (10, 5) -- (9, 5) -- (9, 1) -- (8, 1) -- (8, 5) -- (7, 5) --
+            (7, 1) -- (6, 1) -- (6, 5) -- (3, 5) -- (3, 1) -- (2, 1) --
+            (2, 5) -- (1, 5) -- (1, 1) -- (0, 1) -- cycle;
+    \end{tikzpicture}
+    \makebox[\logoindent]{ }
+  }
+  \vskip2cm
+  \hspace{\logoindent}\usebeamerfont{title}\inserttitle\par
+  \hspace{\logoindent}\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}\insertsubtitle\par
+  \bigskip
+  \hspace{\logoindent}\usebeamerfont{author}\insertauthor\par
+  \hspace{\logoindent}\usebeamerfont{institute}\insertinstitute\par
+  \bigskip
+  \hspace{\logoindent}\usebeamerfont{semester}\@semester\par
+  \hspace{\logoindent}\usebeamerfont{date}\insertdate\par
+  \usebeamercolor[fg]{titlegraphic}\inserttitlegraphic
+}
+
+%insertsectionhead
+
+\ifyourpkgprefix@minimaloption
+\setbeamertemplate{footline}
+{
+  \leavevmode%
+  \hfill
+  \hbox{%
+    \color{primary-black!50}
+    \insertframenumber{} / \inserttotalframenumber\hspace{2ex}
+  }
+  \vspace{2ex}
+  \vskip0pt%
+}
+\else
+\defbeamertemplate*{footline}{tum theme}
+{
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.2\paperwidth,ht=2.25ex,dp=1ex,center]{left foot}%
+      \usebeamerfont{left foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.6\paperwidth,ht=2.25ex,dp=1ex,center]{mid foot}%
+      \usebeamerfont{mid foot}\beamer@ifempty{\insertsubtitle}{}{~~\insertsubtitle}
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.2\paperwidth,ht=2.25ex,dp=1ex,right]{right foot}%
+      % \usebeamerfont{right foot}\@semester\hspace*{2em}
+      %\insertshortdate{}\hspace*{2em}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+  \vskip0pt%
+}
+\fi
+
+%absteigende Reihenfolge der Kugel Größen
+\useitemizeitemtemplate{%
+    \small\raise1.5pt\hbox{$\blacktriangleright$}%
+}
+\usesubitemizeitemtemplate{%
+    \scriptsize\raise1.5pt\hbox{$\blacktriangleright$}%
+}
+\usesubsubitemizeitemtemplate{%
+    \tiny\raise1.5pt\hbox{$\blacktriangleright$}%
+}
+
+\setbeamersize{text margin left=1em,text margin right=1em}
+
+\mode
+<all>
