@@ -36,9 +36,9 @@ size_at_entry = None
 
 debug = True
 
-class RKPrintMem(gdb.Command):
+class RkPrintMem(gdb.Command):
     def __init__(self):
-        super(RKPrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
+        super(RkPrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
         global mem_map
@@ -49,29 +49,42 @@ class RKPrintMem(gdb.Command):
         for addr, (type, size, caller) in mem_map.items():
             print(f"type: {type}, size: {size}, addr: {hex(addr)}, caller: {caller}")
 
-RKPrintMem()
+RkPrintMem()
 
-class RKDebug(gdb.Command):
+class RkDebug(gdb.Command):
     def __init__(self):
-        super(RKDebug, self).__init__("rk-debug", gdb.COMMAND_USER)
+        super(RkDebug, self).__init__("rk-debug", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
         global debug
         debug = not debug
         print(f"Debug messages set to {debug}")
 
-RKDebug()
+RkDebug()
 
-class RKPrintData(gdb.Command):
+class RkPrintData(gdb.Command):
     """Print data of a block in the memory map.\nUsage: rk-data <addr>"""
 
     def __init__(self):
-        super(RKPrintData, self).__init__("rk-data", gdb.COMMAND_DATA)
+        super(RkPrintData, self).__init__("rk-data", gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
         global mem_map
-        
-RKPrintData()
+
+        if int(arg, 16) in mem_map:
+            (type, size, _) = mem_map[int(arg, 16)]
+
+            try:
+                data = gdb.execute(f"print *(({type[7:]}){arg})", to_string=True)
+                print(f"resolving {arg} to {type}")
+                print(data)
+            except:
+                print(f"could not resolve {type} at {arg}")
+                return
+        else:
+            print(f"{arg} does not point to the start of a kernel-allocated portion of the heap")
+
+RkPrintData()
 
 
 class EntryExitBreakpoint(gdb.Breakpoint):
@@ -102,10 +115,10 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
-        
+
         if debug:
-            print("Allocating ", (type, size, caller))
-        
+            print("Allocating ", (type, size, caller), "at", hex(address))
+
         return False
 
     def extract(self, frame):
@@ -161,15 +174,15 @@ class FreeBreakpoint(gdb.Breakpoint):
         if not frame.is_valid():
             return False
 
-        x = int(frame.read_register(free_funcs[frame.name()])) & (2 ** 64 - 1)
+        address = int(frame.read_register(free_funcs[frame.name()])) & (2 ** 64 - 1)
 
-        if x is None:
+        if address is None:
             return False
 
-        if x in mem_map:
+        if address in mem_map:
             if debug:
-                print("Freeing ", mem_map[x])
-            mem_map.pop(x)
+                print("Freeing ", mem_map[address], "at", hex(address))
+            mem_map.pop(address)
 
         return False
 
