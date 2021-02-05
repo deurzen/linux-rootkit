@@ -37,7 +37,7 @@ size_at_entry = None
 
 class PrintMem(gdb.Command):
     def __init__(self):
-        super(PrintMem, self).__init__("print-mem", gdb.COMMAND_DATA)
+        super(PrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
         global mem_map
