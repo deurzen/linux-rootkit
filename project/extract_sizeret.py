@@ -69,6 +69,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
+        print("Allocating ", (type, size, caller))
         return False
 
     def extract(self, frame):
