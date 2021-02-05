@@ -9,11 +9,20 @@ break_arg = {
     "kmem_cache_alloc_trace": "rdx",
     "kmalloc_order": "rdi",
     "__kmalloc": "rdi",
+    "vmalloc": "rdi",
+    "vzalloc": "rdi",
+    "vmalloc_user": "rdi",
+    "vmalloc_node": "rdi",
+    "vzalloc_node": "rdi",
+    "vmalloc_exec": "rdi",
+    "vmalloc_32": "rdi",
+    "vmalloc_32_user": "rdi",
 }
 
 free_funcs = {
+    # *v*free variants all call kfree
     "kfree": "rdi",
-    "kmem_cache_free" : "rsi"
+    "kmem_cache_free" : "rsi",
 }
 
 entries = set()
@@ -69,6 +78,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
+        print("Allocating ", (type, size, caller))
         return False
 
     def extract(self, frame):
