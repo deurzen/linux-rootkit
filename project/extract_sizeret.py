@@ -35,11 +35,11 @@ mem_map = {}
 
 size_at_entry = None
 
-debug = False
+debug = True
 
-class PrintMem(gdb.Command):
+class RKPrintMem(gdb.Command):
     def __init__(self):
-        super(PrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
+        super(RKPrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
         global mem_map
@@ -50,7 +50,7 @@ class PrintMem(gdb.Command):
         for addr, (type, size, caller) in mem_map.items():
             print(f"type: {type}, size: {size}, addr: {hex(addr)}, caller: {caller}")
 
-PrintMem()
+RKPrintMem()
 
 class RKDebug(gdb.Command):
     def __init__(self):
@@ -62,6 +62,33 @@ class RKDebug(gdb.Command):
         print(f"Debug messages set to {debug}")
 
 RKDebug()
+
+class RKPrintData(gdb.Command):
+    """Print data of a block in the memory map.\nUsage: rk-data <addr>"""
+
+    def __init__(self):
+        super(RKPrintData, self).__init__("rk-data", gdb.COMMAND_DATA)
+
+    def invoke(self, arg, from_tty):
+        global mem_map
+
+        try:
+            val = int(arg, 16)
+        except:
+            print("Error: address empty or not a hexadecimal number")
+            return None
+
+        if val not in mem_map:
+            print("Error: address is not in memory map")
+
+        entry = mem_map[val]
+        type = entry[0][(len("type = ")):]
+        self.data_lookup(type, val)
+
+    def data_lookup(self, type, addr):
+        print("Looking up", type, hex(addr) & (2 ** 64 - 1))
+
+RKPrintData()
 
 
 class EntryExitBreakpoint(gdb.Breakpoint):
