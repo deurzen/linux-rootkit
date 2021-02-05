@@ -116,7 +116,7 @@ class RKPrintData(gdb.Command):
         sz = int(gdb.parse_and_eval(f"sizeof({t})"))
         dt = gdb.selected_inferior().read_memory(addr, sz)
 
-        print(f"{line.replace(';', '')} => {bytes(dt)}")
+        print(f"{line.replace(';', '')} => 0x{bytes(dt).hex()}")
 
     def type_from_line(self, line):
         t = line.split(" ")[:-1]
