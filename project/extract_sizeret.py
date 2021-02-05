@@ -47,7 +47,7 @@ class RkPrintMem(gdb.Command):
             return None
 
         for addr, (type, size, caller) in mem_map.items():
-            print(f"type: {type}, size: {size}, addr: {hex(addr)}, caller: {caller}")
+            print(f"type: {type[7:]}, size: {size} B, addr: {hex(addr)}, caller: {caller}")
 
 RkPrintMem()
 
