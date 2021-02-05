@@ -76,7 +76,7 @@ class RkPrintData(gdb.Command):
 
             try:
                 data = gdb.execute(f"print *(({type[7:]}){arg})", to_string=True)
-                print(f"resolving {arg} to {type}")
+                print(f"resolving {arg} to {type}\n")
                 print(data)
             except:
                 print(f"could not resolve {type} at {arg}")
