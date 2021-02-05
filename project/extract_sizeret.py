@@ -73,20 +73,56 @@ class RKPrintData(gdb.Command):
         global mem_map
 
         try:
-            val = int(arg, 16)
+            addr = int(arg, 16)
         except:
             print("Error: address empty or not a hexadecimal number")
             return None
 
-        if val not in mem_map:
+        if addr not in mem_map:
             print("Error: address is not in memory map")
 
-        entry = mem_map[val]
-        type = entry[0][(len("type = ")):]
-        self.data_lookup(type, val)
 
-    def data_lookup(self, type, addr):
-        print("Looking up", type, hex(addr) & (2 ** 64 - 1))
+        type, size, _ = mem_map[addr]
+
+        # Get rid of any asterisks and 'type = ' prefix
+        type = type[(len("type = ")):].replace(' *', '').replace('*', '')
+
+        self.data_lookup(type, addr, size)
+
+    def data_lookup(self, type, addr, size):
+        if not "struct" in type:
+            print(f"Printing hexdump of base type '{type}'")
+            gdb.execute(f"x/{size}b {addr}")
+        else:
+            print(f"Printing contents of '{type}'")
+            
+            contents = gdb.execute(f"ptype {type}", to_string=True).splitlines()
+
+            # Print type declarator, get rid of last curly bracket
+            print(contents.pop(0))
+            contents = contents[:-1]
+
+            basetype = ["struct", "*"]
+
+            for line in contents:
+                # Case basetype
+                if not any(b in line for b in basetype):
+                    self.basetype(line, addr)
+
+            print("}")
+
+    def basetype(self, line, addr):
+        # We only need type information, no name needed
+        t = line.split(" ")[:-1]
+        t = " ".join(t)
+
+        # Retrieve size and read memory accordingly
+        sz = int(gdb.parse_and_eval(f"sizeof({t})"))
+        dt = gdb.selected_inferior().read_memory(addr, sz)
+
+        print(f"{line.replace(';', '')} => {bytes(dt)}")
+            
+
 
 RKPrintData()
 
@@ -226,6 +262,5 @@ class Stage3():
 
         for f in free_funcs:
             FreeBreakpoint(f)
-
 
 Stage3()
