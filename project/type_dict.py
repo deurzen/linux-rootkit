@@ -100,15 +100,15 @@ class CodeDict():
         # loop over the compound type's fields, attempt to match field we're looking for
         for f in ptype:
             # account for possible bit field
-            bitmask = f.rfind(':')
-            if bitmask > 0:
-                f = f[:bitmask]
+            bitfield = f.rfind(':')
+            if bitfield > 0:
+                f = f[:bitfield]
 
             # account for possible array
             f = re.sub('\[.*?\]', '', f)
 
             # match on field name, everything preceding it is its type
-            name = re.search(f"[^_A-Za-z0-9]({field})[^_A-Za-z0-9]", f)
+            name = re.search(f"[^_A-Za-z]({field})[^_A-Za-z0-9]", f)
 
             # field name was found, extract type and recurse if necessary
             if bool(name):
