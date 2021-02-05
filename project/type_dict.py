@@ -52,7 +52,7 @@ class CodeDict():
     def parse(self):
         for line in self.inf.readlines():
             # Insert ./ to reflect the frame representation of source file in gdb
-            l = "./" + line
+            l = ("./" + line).split(" ")
 
             if len(l) < 5 or l[4] != "=":
                 continue
@@ -92,6 +92,9 @@ class CodeDict():
 
         # we need to look for the type of the next field in the field access chain
         field = chain[index]
+        field = re.sub('\[.*?\]', '', field)
+
+        # obtain the fields of the compound type to search through
         ptype = gdb.execute(f"ptype {next_type}", to_string = True).split("\n")[1:-2]
 
         # loop over the compound type's fields, attempt to match field we're looking for
