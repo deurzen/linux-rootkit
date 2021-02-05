@@ -35,6 +35,8 @@ mem_map = {}
 
 size_at_entry = None
 
+debug = False
+
 class PrintMem(gdb.Command):
     def __init__(self):
         super(PrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
@@ -49,6 +51,17 @@ class PrintMem(gdb.Command):
             print(f"type: {type}, size: {size}, addr: {hex(addr)}, caller: {caller}")
 
 PrintMem()
+
+class RKDebug(gdb.Command):
+    def __init__(self):
+        super(RKDebug, self).__init__("rk-debug", gdb.COMMAND_USER)
+
+    def invoke(self, arg, from_tty):
+        global debug
+        debug = not debug
+        print(f"Debug messages set to {debug}")
+
+RKDebug()
 
 
 class EntryExitBreakpoint(gdb.Breakpoint):
@@ -79,7 +92,10 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
-        print("Allocating ", (type, size, caller))
+        
+        if debug:
+            print("Allocating ", (type, size, caller))
+        
         return False
 
     def extract(self, frame):
@@ -128,6 +144,7 @@ class FreeBreakpoint(gdb.Breakpoint):
     def stop(self):
         global mem_map
         global free_funcs
+        global debug
 
         frame = gdb.newest_frame()
 
@@ -140,7 +157,8 @@ class FreeBreakpoint(gdb.Breakpoint):
             return False
 
         if x in mem_map:
-            print("Freeing ", mem_map[x])
+            if debug:
+                print("Freeing ", mem_map[x])
             mem_map.pop(x)
 
         return False
@@ -155,6 +173,8 @@ class Stage3():
         global entries
         global exits
         global types
+
+        gdb.execute("set pagination off")
 
         with open(self.dictfile, 'r') as dct:
             types = json.load(dct)
