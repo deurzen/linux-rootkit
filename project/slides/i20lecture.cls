@@ -3,7 +3,7 @@
 
 \LoadClass[xcolor={usenames,dvipsnames}]{beamer}
 
-\mode<presentation>{\usetheme[wide]{tum}}
+\mode<presentation>{\usetheme[wide, dark]{tum}}
 %% Available Options:
 %% dark     Use dark theme (default: off)
 %% en       English presentation (default: off)
