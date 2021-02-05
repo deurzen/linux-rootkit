@@ -20,7 +20,6 @@ break_arg = {
 }
 
 free_funcs = {
-    # *v*free variants all call kfree
     "kfree": "rdi",
     "vfree": "rdi",
     "kmem_cache_free": "rsi"
@@ -87,15 +86,13 @@ class RKPrintData(gdb.Command):
         # Get rid of any asterisks and 'type = ' prefix
         type = type[(len("type = ")):].replace(' *', '').replace('*', '')
 
-        self.data_lookup(type, addr, size)
-
-    def data_lookup(self, type, addr, size):
         if not "struct" in type:
             print(f"Printing hexdump of base type '{type}'")
             gdb.execute(f"x/{size}b {addr}")
         else:
-            print(f"Printing contents of '{type}'")
+            self.data_lookup(type, addr, size)
             
+    def data_lookup(self, type, addr, size):
             contents = gdb.execute(f"ptype {type}", to_string=True).splitlines()
 
             # Print type declarator, get rid of last curly bracket
@@ -106,21 +103,29 @@ class RKPrintData(gdb.Command):
 
             for line in contents:
                 # Case basetype
-                if not any(b in line for b in basetype):
+                if not any(b in line for b in basetype) and not self.is_struct(line):
                     self.basetype(line, addr)
 
             print("}")
 
     def basetype(self, line, addr):
         # We only need type information, no name needed
-        t = line.split(" ")[:-1]
-        t = " ".join(t)
+        t = self.type_from_line(line)
 
         # Retrieve size and read memory accordingly
         sz = int(gdb.parse_and_eval(f"sizeof({t})"))
         dt = gdb.selected_inferior().read_memory(addr, sz)
 
         print(f"{line.replace(';', '')} => {bytes(dt)}")
+
+    def type_from_line(self, line):
+        t = line.split(" ")[:-1]
+        return " ".join(t)
+
+    # Check whether a type (ex.: wait_queue_head_t) is really a struct
+    def is_struct(self, line):
+        t = self.type_from_line(line)
+        return "struct" in gdb.execute(f"ptype {t}", to_string=True)
             
 
 
