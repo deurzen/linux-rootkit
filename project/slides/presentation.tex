@@ -48,18 +48,51 @@
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM}
+  \framesubtitle{LiveDM - Overview}
   
   \begin{itemize}
     \item LiveDM seeks to overcome the previous issues
 \pause
-    \item Memory allocations and frees (example: \texttt{kmalloc} and \texttt{kfree}) can be intercepted
+    \item Memory allocation events can be intercepted
 \pause
     \item Going from there, LiveDM is able to create a memory map
 \pause
     \item This map even includes type information!
   \end{itemize}
 \end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{LiveDM - Overview}
+  
+  \begin{itemize}
+    \item Three phases exist to create the mapping:
+    \begin{enumerate}
+\pause
+     \item Gathering of necessary values
+\pause
+     \item Determining scope of interpretation
+\pause
+     \item Data type interpretation
+    \end{enumerate}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{LiveDM - Phase 1}
+  
+  \begin{itemize}
+    \item Phase 1 is comprised of..
+    \begin{itemize}
+\pause
+     \item ..intercepting a set of memory allocation/freeing functions
+\pause
+     \item ..retrieving the requested size, as well as the return value
+\pause
+     \item ..identifying the caller through the stack's return address
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
