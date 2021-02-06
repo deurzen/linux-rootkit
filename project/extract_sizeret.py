@@ -19,10 +19,14 @@ break_arg = {
     "vmalloc_32_user": "rdi",
 }
 
+break_arg_access = {
+    "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
+}
+
 free_funcs = {
     "kfree": "rdi",
     "vfree": "rdi",
-    "kmem_cache_free": "rsi"
+    "kmem_cache_free": "rsi",
 }
 
 entries = set()
@@ -129,15 +133,26 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         if self.number in entries:
             # extract size from correct register
-            if int(frame.read_register(break_arg[frame.name()])) > 0:
-                size_at_entry = int(frame.read_register(break_arg[frame.name()]))
-                return None
+            if frame.name() in break_arg:
+                size = int(frame.read_register(break_arg[frame.name()]))
+                if size > 0:
+                    size_at_entry = size
+                    return None
+
+            elif frame.name() in break_arg_access:
+                (reg, type, field) = break_arg_access[frame.name()]
+                size = int(gdb.execute(f"p (({type})${reg})->{field}", to_string=True).strip().split(" ")[2])
+                if size > 0:
+                    size_at_entry = size
+                    return None
 
         elif self.number in exits and size_at_entry is not None:
             # extract return value, return tuple (size, address)
             ret = (size_at_entry, int(frame.read_register('rax')) & (2 ** 64 - 1))
             size_at_entry = None
             return ret
+
+        return None
 
     def type_lookup(self, frame):
         global types
@@ -206,19 +221,21 @@ class Stage3():
         with open(self.dictfile, 'r') as dct:
             types = json.load(dct)
 
-        for b in break_arg.keys():
+        types["./kernel/fork.c:812"] = "type = struct task_struct *"
+
+        for b in (break_arg.keys() | break_arg_access.keys()):
             # set breakpoint at function entry, to extract size
             b_entry = EntryExitBreakpoint(b)
             self.breakpoints.append(b_entry)
             entries.add(b_entry.number)
 
-            # lookup offset from function entry to retq, account for possibility of >1 retq occurrence
+            # lookup offset from function entry to ret{,q}, account for possibility of >1 ret{,q} occurrence
             disass = gdb.execute(f"disass {b}", to_string=True).strip().split("\n")
             disass = [instr.split("\t") for instr in disass]
             instrs = [(instr[0].strip(), instr[1].split(" ")[0].strip()) for instr in disass if len(instr) > 1]
             retqs = [int(loc.split("<")[1].split(">")[0]) for (loc, instr) in instrs if instr == "ret" or instr == "retq"]
 
-            # set breakpoints at function exits (retq), to extract return value
+            # set breakpoints at function exits (ret{,q}), to extract return value
             for retq in retqs:
                 b_exit = EntryExitBreakpoint(f"*{hex(int(str(gdb.parse_and_eval(b).address).split(' ')[0], 16) + retq)}")
                 self.breakpoints.append(b_exit)
