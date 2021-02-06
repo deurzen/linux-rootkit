@@ -88,7 +88,7 @@ class CodeDict():
     def parse_chain(self, next_type, chain, index):
         # we're at the final field access, return its type
         if index >= len(chain):
-            return next_type
+            return "type = " + next_type.strip()
 
         # we need to look for the type of the next field in the field access chain
         field = chain[index]
