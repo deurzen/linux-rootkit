@@ -30,9 +30,6 @@ watch_write_field_chain = {
     "struct task_struct *": [
         # (((struct task_struct *)<address>)->real_cred)->uid
         ["real_cred", "uid"],
-
-        # (((struct task_struct *)<address>)->real_cred)->gid
-        ["real_cred", "gid"],
     ]
 }
 
@@ -142,16 +139,16 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         mem_map[address] = (type, size, caller)
 
-        if n_watchpoints < 4:
-            if type[7:] in watch_write_field_chain:
-                field_chains = watch_write_field_chain[type[7:]]
-                for field_chain in field_chains:
+        if type[7:] in watch_write_field_chain:
+            field_chains = watch_write_field_chain[type[7:]]
+            for field_chain in field_chains:
+                if n_watchpoints + len(field_chain) <= 4:
                     if address in watchpoints:
                         watchpoints[address].append(WriteWatchpoint(address, type[7:], field_chain))
                     else:
                         watchpoints[address] = [WriteWatchpoint(address, type[7:], field_chain)]
 
-                    n_watchpoints += 1
+                    n_watchpoints += len(field_chain)
                     if n_watchpoints >= 4:
                         break
 
@@ -233,7 +230,7 @@ class FreeBreakpoint(gdb.Breakpoint):
 
         if address in watchpoints:
             for watchpoint in watchpoints[address]:
-                print("Deleting watchpoing on", watchpoint.current_chain, "which is at", hex(address))
+                print("Deleting watchpoint on", watchpoint.current_chain, "which is at", hex(address))
                 watchpoint.delete()
                 n_watchpoints -= 1
 
@@ -264,15 +261,16 @@ class WriteWatchpoint(gdb.Breakpoint):
             current_chain = "(" + current_chain + "->" + field + ")"
             self.initial_values.append(self.get_value(current_chain))
 
-        print("Setting watchpoing on", current_chain, "which is at", hex(address))
+        print("Setting watchpoint on", current_chain, "which is at", hex(address))
         self.current_chain = current_chain
         gdb.Breakpoint.__init__(self, current_chain, internal=True, type=gdb.BP_WATCHPOINT)
 
     def stop(self):
         current_chain = f"(({self.type}){hex(self.address)})"
-        for field, initial_value in zip(self.field_chain, self.initial_values):
+        for i, (field, initial_value) in enumerate(zip(self.field_chain, self.initial_values)):
             current_chain += "->(" + field + ")"
             current_value = self.get_value(current_chain)
+
             if initial_value != current_value:
                 print(current_chain, "changed from", initial_value, "to", current_value)
 
@@ -280,12 +278,9 @@ class WriteWatchpoint(gdb.Breakpoint):
 
     def get_value(self, name):
         try:
-            size = int(gdb.parse_and_eval(f"sizeof(*{name})"))
+            size = int(gdb.parse_and_eval(f"sizeof({name})"))
         except:
-            try:
-                size = int(gdb.parse_and_eval(f"sizeof({name})"))
-            except:
-                return 0
+            return 0
 
         try:
             address = int(gdb.execute(f"p &({name})", to_string = True).strip().split(" ")[-1], 16)
