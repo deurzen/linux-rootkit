@@ -234,7 +234,9 @@ class FreeBreakpoint(gdb.Breakpoint):
         if address in watchpoints:
             print("Deleting watchpoint")
             n_watchpoints = n_watchpoints - len(watchpoints[address])
-            watchpoints[address].delete()
+
+            for watchpoint in watchpoints[address]:
+                watchpoint.delete()
 
         if address in mem_map:
             if debug:
