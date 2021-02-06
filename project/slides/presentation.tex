@@ -47,9 +47,9 @@
   \framesubtitle{LiveDM - Overview}
   
   \begin{itemize}
-    \item LiveDM seeks to overcome the previous issues
+    \item LiveDM seeks to overcome the previous issues through Virtual Machine Introspection
 \pause
-    \item Memory allocation events can be intercepted
+    \item Memory allocation events can be intercepted from a
 \pause
     \item Going from there, LiveDM is able to create a memory map
 \pause
@@ -137,6 +137,23 @@
   \end{itemize}
 \end{frame}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Our Approach}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{\insertsection}
+  \framesubtitle{VMM}
+  
+  \begin{itemize}
+   \item Since introspection techniques are required, we need a VMM
+\pause
+    \begin{itemize}
+    \item Xen
+    \item KVM
+    \item QEMU (our pick)
+    \item ..
+    \end{itemize}
+  \end{itemize}
+\end{frame}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
