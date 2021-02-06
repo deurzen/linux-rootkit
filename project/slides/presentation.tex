@@ -1,4 +1,5 @@
 \documentclass{i20lecture}
+\usepackage{listings}
 
 \subtitle{LiveDM - Proof of Concept}
 
@@ -16,7 +17,7 @@
         \item Dynamic Kernel Memory
         \item LiveDM
     \end{itemize}
-    \item Our Approach
+    \item Approach
     \item Results
     \item Discussion / Questions
   \end{enumerate}
@@ -138,7 +139,7 @@
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Our Approach}
+\section{Approach}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}{\insertsection}
   \framesubtitle{VMM}
@@ -149,10 +150,58 @@
     \begin{itemize}
     \item Xen
     \item KVM
-    \item QEMU (our pick)
+    \item QEMU (our pick; introspection done with GDB)
     \item ..
     \end{itemize}
   \end{itemize}
+\end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{Implementing Phase 1}
+    
+    \begin{itemize}
+     \item Intercepting allocation functions is easy: breakpoints
+     \begin{itemize}
+\pause
+      \item Has a significant performance overhead, but system is still usable
+\pause
+      \item Possible improvement: hardware breakpoints
+\pause
+      \item Only part of GDB's Python API since 21st January 2021..
+     \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing Phase 1}
+    
+    \begin{itemize}
+     \item To retrieve the size parameter, we can rely on the System V calling convention
+\pause
+     \begin{itemize}
+      \item As the size is not always the first argument, we build a dictionary:
+     \end{itemize}
+    \end{itemize}
+    \begin{lstlisting}
+    break_arg = {
+        "kmem_cache_alloc_trace": "rdx",
+        "kmalloc_order": "rdi"
+        [...]
+    }
+    \end{lstlisting}
+\pause
+    \begin{itemize}
+     \item Return values are gathered by additionally breaking on return instructions
+     \begin{itemize}
+\pause
+     \item Only one will be generated per function
+     \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{Implementing Phase 2}
+
 \end{frame}
 
 
