@@ -232,11 +232,12 @@ class FreeBreakpoint(gdb.Breakpoint):
             return False
 
         if address in watchpoints:
-            print("Deleting watchpoint")
-            n_watchpoints = n_watchpoints - len(watchpoints[address])
-
             for watchpoint in watchpoints[address]:
+                print("Deleting watchpoing on", watchpoint.current_chain, "which is at", hex(address))
                 watchpoint.delete()
+                n_watchpoints -= 1
+
+            del(watchpoints[address])
 
         if address in mem_map:
             if debug:
@@ -264,6 +265,7 @@ class WriteWatchpoint(gdb.Breakpoint):
             self.initial_values.append(self.get_value(current_chain))
 
         print("Setting watchpoing on", current_chain, "which is at", hex(address))
+        self.current_chain = current_chain
         gdb.Breakpoint.__init__(self, current_chain, internal=True, type=gdb.BP_WATCHPOINT)
 
     def stop(self):
