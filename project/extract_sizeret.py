@@ -4,7 +4,7 @@ import gdb
 import re
 import json
 
-# allocator mapped to register containing size argument
+# allocator |-> register containing size argument
 break_arg = {
     "kmem_cache_alloc_trace": "rdx",
     "kmalloc_order": "rdi",
@@ -23,6 +23,15 @@ break_arg_access = {
     "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
 }
 
+# structs |-> (struct cred *) members to watch
+cred_watch = {
+    "struct task_struct": ["real_cred"]
+}
+
+# address of underlying struct |-> gdb.Watchpoint object
+watchpoints = {}
+
+# memory freeing functions |-> register with argument
 free_funcs = {
     "kfree": "rdi",
     "vfree": "rdi",
@@ -96,6 +105,9 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         gdb.Breakpoint.__init__(self, b)
 
     def stop(self):
+        global member_watch
+        global mem_map
+
         frame = gdb.newest_frame()
 
         if not frame.is_valid():
@@ -119,6 +131,12 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
+
+        for struct, v in cred_watch.items():
+            if struct in type:
+                for member in v:
+                    CredWatchpoint(address, struct, member)
+                break
 
         if debug:
             print("Allocating ", (type, size, caller), "at", hex(address))
@@ -181,6 +199,7 @@ class FreeBreakpoint(gdb.Breakpoint):
 
     def stop(self):
         global mem_map
+        global watchpoints
         global free_funcs
         global debug
 
@@ -194,12 +213,82 @@ class FreeBreakpoint(gdb.Breakpoint):
         if address is None:
             return False
 
+        if address in watchpoints:
+            print("Deleting watchpoint")
+            watchpoints[address].delete()
+
         if address in mem_map:
             if debug:
                 print("Freeing ", mem_map[address], "at", hex(address))
             mem_map.pop(address)
 
         return False
+
+# watch changes to (struct cred *) members of structs (best example: struct task_struct)
+# specifically, we are interested in uid, gid, suid, sgid, euid, egid, fsuid, fsgid
+class CredWatchpoint(gdb.Breakpoint):
+    watch = ["uid", "gid", "suid", "sgid", "euid", "egid", "fsuid", "fsgid"]
+
+    def __init__(self, address, dtype, member):
+        global watchpoints
+        watchpoints[address] = self
+
+        self.target = f"(({dtype} *){address})->{member}"
+        
+        try:
+            self.old_val = self.get_p_addr(self.target)
+        except:
+            return None
+
+        gdb.Breakpoint.__init__(self, self.target, internal=True, type=gdb.BP_WATCHPOINT)
+    
+    def stop(self):
+        new_val = self.get_p_addr(self.target)
+
+        # If old_val is 0 and changed, it probably has been created now -> ignore
+        if self.old_val == 0:
+            self.old_val = new_val
+            return False
+
+        # If new_val is 0, the cred struct is killed -> ignore
+        if new_val == 0:
+            self.old_val = new_val
+            return False
+
+        # If newval is changed to something != 0, we check if it was just an update to the usage count (or fields we don't consider)
+        if self.id_check(self.old_val, new_val):
+            return False
+
+        # alert user of potential attack
+        print("ALERT")
+        return True
+
+    def get_p_addr(self, t):
+        return int(gdb.execute(f"p {t}", to_string=True).split(' ')[-1], 16)
+
+    # specific to output like this: 
+    # $20 = {
+    #     val = 1000
+    # } 
+    def get_id_string(self, t):
+        return (gdb.execute(f"p {t}", to_string=True)).split('\n')[1]
+
+    # returns True if ids (uid etc.) are unchanged
+    def id_check(self, old, new):
+        ret = True
+
+        for m in self.watch:
+            field_old = self.get_id_string(f"((struct cred *){old}).{m}").lstrip()
+            field_new = self.get_id_string(f"((struct cred *){new}).{m}").lstrip()
+
+            if field_old != field_new:
+                ret = False
+                print(f"[WARNING] Field {m} of credentials changed!")
+                print(f"Old: {field_old}, New: {field_new}")
+
+        return ret
+
+
 
 class Stage3():
     breakpoints = []
