@@ -12,17 +12,13 @@
 \begin{frame}{\insertsection}
   \begin{enumerate}
    \item Background
-   \begin{itemize}
-    \item Dynamic Kernel Memory
-    \item LiveDM
-   \end{itemize}
-   \item Possible Approaches
-   \begin{itemize}
-    \item Xen, KVM, QEMU
-   \end{itemize}
-   \item Our Approach
-   \item Results
-   \item Discussion / Questions
+    \begin{itemize}
+        \item Dynamic Kernel Memory
+        \item LiveDM
+    \end{itemize}
+    \item Our Approach
+    \item Results
+    \item Discussion / Questions
   \end{enumerate}
 \end{frame}
 
@@ -51,9 +47,9 @@
   \framesubtitle{LiveDM - Overview}
   
   \begin{itemize}
-    \item LiveDM seeks to overcome the previous issues
+    \item LiveDM seeks to overcome the previous issues through Virtual Machine Introspection
 \pause
-    \item Memory allocation events can be intercepted
+    \item Memory allocation events can be intercepted from a
 \pause
     \item Going from there, LiveDM is able to create a memory map
 \pause
@@ -65,7 +61,7 @@
   \framesubtitle{LiveDM - Overview}
   
   \begin{itemize}
-    \item Three phases exist to create the mapping:
+    \item Three phases \footnote{The word 'phase' is not the best pick here} exist to create the mapping:
     \begin{enumerate}
 \pause
      \item Gathering of necessary values
@@ -93,6 +89,71 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}{\insertsection}
+  \framesubtitle{LiveDM - Phase 2}
+  
+  \begin{itemize}
+    \item In phase 2, the scope of memory monitoring is chosen
+    \begin{itemize}
+\pause
+     \item Offer snapshots of the memory map (containing type and size for allocated memory)
+     \begin{itemize}
+      \item We offer this in our PoC
+     \end{itemize}
+\pause
+     \item Trace every memory access on known memory blocks
+     \begin{itemize}
+      \item We are able to showcase that on a small example
+     \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{LiveDM - Phase 3}
+  
+  \begin{itemize}
+    \item In phase 3, the caller's address is translated into a type
+\pause
+    \begin{itemize}
+     \item Relies on instrumenting GCC to retrieve abstract syntax tree (AST)
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{LiveDM - Motivation}
+  
+  \begin{itemize}
+    \item Why do we need this information? Possible answers include..
+    \begin{enumerate}
+\pause
+     \item To make dynamic memory less transparent
+\pause
+     \item To utilize this information for debugging
+\pause
+     \item \textcolor{yellow}{To utilize this information for rootkit detection}
+    \end{enumerate}
+  \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Our Approach}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{\insertsection}
+  \framesubtitle{VMM}
+  
+  \begin{itemize}
+   \item Since introspection techniques are required, we need a VMM
+\pause
+    \begin{itemize}
+    \item Xen
+    \item KVM
+    \item QEMU (our pick)
+    \item ..
+    \end{itemize}
+  \end{itemize}
+\end{frame}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
