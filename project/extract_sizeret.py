@@ -23,25 +23,21 @@ break_arg_access = {
     "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
 }
 
-# type -> [field chain(s)]
+# { type -> [field chain] }
 # Make sure each entry in a field chain is a pointer,
 # as it is dereferenced to obtain the next field
 watch_write_field_chain = {
     "struct task_struct *": [
-        # ["real_cred"],
+        # (((struct task_struct *)<address>)->real_cred)->uid
         ["real_cred", "uid"],
+
+        # (((struct task_struct *)<address>)->real_cred)->gid
         ["real_cred", "gid"],
-        # ["real_cred", "suid"],
-        # ["real_cred", "sgid"],
-        # ["real_cred", "euid"],
-        # ["real_cred", "egid"],
-        # ["real_cred", "fsuid"],
-        # ["real_cred", "fsgid"],
     ]
 }
 
-# address of underlying struct |-> gdb.Watchpoint object
 watchpoints = {}
+n_watchpoints = 0
 
 # memory freeing functions |-> register with argument
 free_funcs = {
@@ -118,6 +114,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
     def stop(self):
         global watchpoints
+        global n_watchpoints
         global watch_write_field_chain
         global mem_map
 
@@ -145,18 +142,18 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         mem_map[address] = (type, size, caller)
 
-        if type[7:] in watch_write_field_chain:
-            field_chains = watch_write_field_chain[type[7:]]
-            for field_chain in field_chains:
-                watchpoints[address] = WriteWatchpoint(address, type[7:], field_chain)
+        if n_watchpoints < 4:
+            if type[7:] in watch_write_field_chain:
+                field_chains = watch_write_field_chain[type[7:]]
+                for field_chain in field_chains:
+                    if address in watchpoints:
+                        watchpoints[address].append(WriteWatchpoint(address, type[7:], field_chain))
+                    else:
+                        watchpoints[address] = [WriteWatchpoint(address, type[7:], field_chain)]
 
-        # for struct, v in watch_write_field_chain.items():
-        #     if struct in type:
-        #         for member in v:
-        #             print("(",type,")", struct, member)
-        #             break
-        # #             CredWatchpoint(address, struct, member)
-        # #         break
+                    n_watchpoints += 1
+                    if n_watchpoints >= 4:
+                        break
 
         if debug:
             print("Allocating", (type, size, caller), "at", hex(address))
@@ -220,6 +217,7 @@ class FreeBreakpoint(gdb.Breakpoint):
     def stop(self):
         global mem_map
         global watchpoints
+        global n_watchpoints
         global free_funcs
         global debug
 
@@ -235,6 +233,7 @@ class FreeBreakpoint(gdb.Breakpoint):
 
         if address in watchpoints:
             print("Deleting watchpoint")
+            n_watchpoints = n_watchpoints - len(watchpoints[address])
             watchpoints[address].delete()
 
         if address in mem_map:
@@ -253,14 +252,9 @@ class WriteWatchpoint(gdb.Breakpoint):
     def __init__(self, address, type, field_chain):
         global watchpoints
 
-        if len(watchpoints) >= 4:
-            return None
-
         self.address = address
         self.type = type
         self.field_chain = field_chain
-
-        address_watchpoints = []
 
         current_chain = f"(({type}){hex(address)})"
         for field in field_chain:
@@ -268,7 +262,6 @@ class WriteWatchpoint(gdb.Breakpoint):
             self.initial_values.append(self.get_value(current_chain))
 
         print("Setting watchpoing on", current_chain, "which is at", hex(address))
-        watchpoints[address] = self
         gdb.Breakpoint.__init__(self, current_chain, internal=True, type=gdb.BP_WATCHPOINT)
 
     def stop(self):
