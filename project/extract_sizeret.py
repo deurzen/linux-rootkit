@@ -23,9 +23,21 @@ break_arg_access = {
     "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
 }
 
-# structs |-> (struct cred *) members to watch
-cred_watch = {
-    "struct task_struct": ["real_cred"]
+# type -> [field chain(s)]
+# Make sure each entry in a field chain is a pointer,
+# as it is dereferenced to obtain the next field
+watch_write_field_chain = {
+    "struct task_struct *": [
+        # ["real_cred"],
+        ["real_cred", "uid"],
+        ["real_cred", "gid"],
+        # ["real_cred", "suid"],
+        # ["real_cred", "sgid"],
+        # ["real_cred", "euid"],
+        # ["real_cred", "egid"],
+        # ["real_cred", "fsuid"],
+        # ["real_cred", "fsgid"],
+    ]
 }
 
 # address of underlying struct |-> gdb.Watchpoint object
@@ -105,7 +117,8 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         gdb.Breakpoint.__init__(self, b)
 
     def stop(self):
-        global member_watch
+        global watchpoints
+        global watch_write_field_chain
         global mem_map
 
         frame = gdb.newest_frame()
@@ -132,14 +145,21 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         mem_map[address] = (type, size, caller)
 
-        for struct, v in cred_watch.items():
-            if struct in type:
-                for member in v:
-                    CredWatchpoint(address, struct, member)
-                break
+        if type[7:] in watch_write_field_chain:
+            field_chains = watch_write_field_chain[type[7:]]
+            for field_chain in field_chains:
+                watchpoints[address] = WriteWatchpoint(address, type[7:], field_chain)
+
+        # for struct, v in watch_write_field_chain.items():
+        #     if struct in type:
+        #         for member in v:
+        #             print("(",type,")", struct, member)
+        #             break
+        # #             CredWatchpoint(address, struct, member)
+        # #         break
 
         if debug:
-            print("Allocating ", (type, size, caller), "at", hex(address))
+            print("Allocating", (type, size, caller), "at", hex(address))
 
         return False
 
@@ -219,76 +239,66 @@ class FreeBreakpoint(gdb.Breakpoint):
 
         if address in mem_map:
             if debug:
-                print("Freeing ", mem_map[address], "at", hex(address))
+                print("Freeing", mem_map[address], "at", hex(address))
             mem_map.pop(address)
 
         return False
 
-# watch changes to (struct cred *) members of structs (best example: struct task_struct)
-# specifically, we are interested in uid, gid, suid, sgid, euid, egid, fsuid, fsgid
-class CredWatchpoint(gdb.Breakpoint):
-    watch = ["uid", "gid", "suid", "sgid", "euid", "egid", "fsuid", "fsgid"]
+class WriteWatchpoint(gdb.Breakpoint):
+    address = None
+    type = None
+    field_chain = None
+    initial_values = []
 
-    def __init__(self, address, dtype, member):
+    def __init__(self, address, type, field_chain):
         global watchpoints
-        watchpoints[address] = self
 
-        self.target = f"(({dtype} *){address})->{member}"
-        
-        try:
-            self.old_val = self.get_p_addr(self.target)
-        except:
+        if len(watchpoints) >= 4:
             return None
 
-        gdb.Breakpoint.__init__(self, self.target, internal=True, type=gdb.BP_WATCHPOINT)
-    
+        self.address = address
+        self.type = type
+        self.field_chain = field_chain
+
+        address_watchpoints = []
+
+        current_chain = f"(({type}){hex(address)})"
+        for field in field_chain:
+            current_chain = "(" + current_chain + "->" + field + ")"
+            self.initial_values.append(self.get_value(current_chain))
+
+        print("Setting watchpoing on", current_chain, "which is at", hex(address))
+        watchpoints[address] = self
+        gdb.Breakpoint.__init__(self, current_chain, internal=True, type=gdb.BP_WATCHPOINT)
+
     def stop(self):
-        new_val = self.get_p_addr(self.target)
+        current_chain = f"(({self.type}){hex(self.address)})"
+        for field, initial_value in zip(self.field_chain, self.initial_values):
+            current_chain += "->(" + field + ")"
+            current_value = self.get_value(current_chain)
+            if initial_value != current_value:
+                print(current_chain, "changed from", initial_value, "to", current_value)
 
-        # If old_val is 0 and changed, it probably has been created now -> ignore
-        if self.old_val == 0:
-            self.old_val = new_val
-            return False
+        return False
 
-        # If new_val is 0, the cred struct is killed -> ignore
-        if new_val == 0:
-            self.old_val = new_val
-            return False
+    def get_value(self, name):
+        try:
+            size = int(gdb.parse_and_eval(f"sizeof(*{name})"))
+        except:
+            try:
+                size = int(gdb.parse_and_eval(f"sizeof({name})"))
+            except:
+                return 0
 
-        # If newval is changed to something != 0, we check if it was just an update to the usage count (or fields we don't consider)
-        if self.id_check(self.old_val, new_val):
-            return False
+        try:
+            address = int(gdb.execute(f"p &({name})", to_string = True).strip().split(" ")[-1], 16)
+        except:
+            return 0
 
-        # alert user of potential attack
-        print("ALERT")
-        return True
-
-    def get_p_addr(self, t):
-        return int(gdb.execute(f"p {t}", to_string=True).split(' ')[-1], 16)
-
-    # specific to output like this: 
-    # $20 = {
-    #     val = 1000
-    # } 
-    def get_id_string(self, t):
-        return (gdb.execute(f"p {t}", to_string=True)).split('\n')[1]
-
-    # returns True if ids (uid etc.) are unchanged
-    def id_check(self, old, new):
-        ret = True
-
-        for m in self.watch:
-            field_old = self.get_id_string(f"((struct cred *){old}).{m}").lstrip()
-            field_new = self.get_id_string(f"((struct cred *){new}).{m}").lstrip()
-
-            if field_old != field_new:
-                ret = False
-                print(f"[WARNING] Field {m} of credentials changed!")
-                print(f"Old: {field_old}, New: {field_new}")
-
-        return ret
-
-
+        try:
+            return gdb.selected_inferior().read_memory(address, size)
+        except:
+            return 0
 
 class Stage3():
     breakpoints = []
