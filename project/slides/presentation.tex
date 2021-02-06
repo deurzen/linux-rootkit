@@ -167,7 +167,11 @@
 \pause
       \item Possible improvement: hardware breakpoints
 \pause
-      \item Only part of GDB's Python API since 21st January 2021..
+        \begin{itemize}
+            \item Limited to a small number
+\pause
+            \item Only part of GDB's Python API since 21st January 2021..
+        \end{itemize}
      \end{itemize}
     \end{itemize}
 \end{frame}
@@ -200,9 +204,117 @@
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{Implementing Phase 2}
-
+  \framesubtitle{Implementing Phase 1}
+    
+    \begin{itemize}
+     \item LiveDM relies on the return address on the stack
+\pause
+     \item Instead, we walk the unwinded stack and retrieve the \texttt{file:line} information
+\pause
+     \begin{itemize}
+      \item More on that later..
+     \end{itemize}
+    \end{itemize}
 \end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing Phase 2}
+    
+    \begin{enumerate}
+     \item Snapshot-based approach
+\pause
+     \begin{itemize}
+      \item Since we already store everything gathered, this is readily available
+\pause
+      \item Currently allocated memory can be listed with \texttt{rk-print-mem}:
+     \end{itemize}
+    \end{enumerate}
+    \begin{lstlisting}
+    > rk-print-mem 
+      type: struct task_struct *, size: 3776 B, addr: 0xffff9e65bb961d80, caller: ./kernel/fork.c:812
+      type: struct fdtable *, size: 56 B, addr: 0xffff9e65bc7d7280, caller: ./fs/file.c:111
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing Phase 2}
+    
+    \begin{enumerate}
+     \setcounter{enumi}{1}
+     \item Memory-access tracing
+\pause
+    \begin{itemize}
+     \item Would require some advanced techniques (ex.: page unmapping) for full coverage
+\pause
+    \item Not feasible for the given time frame
+\pause
+    \item Instead, we will demonstrate a small example later based on \textit{hardware} watchpoints
+    \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing Phase 3}
+    \begin{itemize}
+     \item Translation of call sites to types; possible approaches:
+     \begin{itemize}
+\pause
+      \item Instrumenting \texttt{gcc} to extract AST (LiveDM)
+\pause
+      \item Using \texttt{clang} to generate an AST without instrumentation
+\pause
+      \item Abusing GDB's \texttt{whatis} command to statically pre-compute type dictionary (Our pick)
+     \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing Phase 3}
+    \begin{itemize}
+     \item Process for generating the type dictionary: \footnote{Fully automated, since very specific to kernel  code version}
+\pause
+     \begin{enumerate}
+      \item Find all occurences of function calls we are interested in using \texttt{cscope}
+\pause
+      \item Iterate the generated occurences in python; execute \texttt{whatis} on every variable
+      \begin{itemize}
+\pause
+       \item Assumption: kernel symbols are loaded
+\pause
+       \item Compound types (example: \lstinline|desc->inbuf|) have to be resolved incrementally by us
+      \end{itemize}
+\pause
+      \item Place the results in a dictionary; can be loaded by the 'main' python script
+\pause
+     \end{enumerate}
+    \end{itemize}
+    \begin{lstlisting}
+     "./arch/x86/kernel/e820.c:675": "type = struct e820_table *",
+     "./arch/x86/kernel/e820.c:681": "type = struct e820_table *"
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing Phase 3}
+    \begin{itemize}
+     \item Once a breakpoint is encountered, we can walk the stack with gdb..
+    \end{itemize}
+\pause
+    \begin{lstlisting}
+    #0  __kmalloc (size=168, flags=6291456) at ./mm/slub.c:3784
+    #1  0xffffffffa9384095 in kmalloc (flags=<optimized out>, size=<optimized out>) at ./include/linux/slab.h:520
+    #2  bio_alloc_bioset (gfp_mask=6291456, nr_iovecs=<optimized out>, bs=0x0) at ./block/bio.c:452
+    \end{lstlisting}
+\pause
+    \begin{itemize}
+     \item ..and match the \texttt{file:line} descriptor to a type without expensive computations
+    \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
