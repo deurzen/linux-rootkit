@@ -267,12 +267,13 @@ class WriteWatchpoint(gdb.Breakpoint):
 
     def stop(self):
         current_chain = f"(({self.type}){hex(self.address)})"
-        for i, (field, initial_value) in enumerate(zip(self.field_chain, self.initial_values)):
+        for field, initial_value in zip(self.field_chain, self.initial_values):
             current_chain += "->(" + field + ")"
-            current_value = self.get_value(current_chain)
 
-            if initial_value != current_value:
-                print(current_chain, "changed from", initial_value, "to", current_value)
+        current_value = self.get_value(current_chain)
+
+        if self.initial_values[-1] != current_value:
+            print(current_chain, "changed from", initial_value, "to", current_value)
 
         return False
 
