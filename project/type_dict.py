@@ -35,7 +35,9 @@ class CodeDict():
 
     def __init__(self):
         self.setup()
+        print("Creating dictionary, this can take 5 minutes or more..")
         self.parse()
+        print("..done!")
 
         self.outf.write(json.dumps(self.dict))
 
@@ -84,9 +86,7 @@ class CodeDict():
                     continue
 
             if len(var) > 1:
-                print("looking in", type_info[7:].strip(), "for", var[1:])
                 type_info = self.parse_chain(type_info[7:], var, 1)
-                print("FOUND:", type_info)
 
             if type_info is not None:
                 key = f"{src}:{lnr}"
