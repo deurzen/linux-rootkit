@@ -15,7 +15,7 @@ This a small user's guide to supplement the slides.
 
 ### Memory Tracing
 
-Simply source `extract_sizeret.py` from within GDB. All memory allocations / frees for selected defined functions will now be tracked.
+Simply source `livedm.py` from within GDB. All memory allocations / frees for selected defined functions will now be tracked.
 
 Commands available:
 
