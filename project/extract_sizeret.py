@@ -82,7 +82,7 @@ RkPrintMem()
 
 class RkDebug(gdb.Command):
     def __init__(self):
-        super(RkDebug, self).__init__("rk-debug_level", gdb.COMMAND_USER)
+        super(RkDebug, self).__init__("rk-debug", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
         global debug_level
