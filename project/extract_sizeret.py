@@ -52,7 +52,7 @@ entries = set()
 exits = set()
 types = {}
 
-# Maps address to tuples of (type, size, caller)
+# Address |-> (type, size, caller)
 mem_map = {}
 
 size_at_entry = None
@@ -66,6 +66,8 @@ class DebugLevel(IntEnum):
 debug_level = DebugLevel.INFO
 
 class RkPrintMem(gdb.Command):
+    """Print currently allocated memory"""
+
     def __init__(self):
         super(RkPrintMem, self).__init__("rk-print-mem", gdb.COMMAND_DATA)
 
@@ -81,6 +83,8 @@ class RkPrintMem(gdb.Command):
 RkPrintMem()
 
 class RkDebug(gdb.Command):
+    """Toggle between different modes of memory logging"""
+
     def __init__(self):
         super(RkDebug, self).__init__("rk-debug", gdb.COMMAND_USER)
 
@@ -348,13 +352,11 @@ class Stage3():
         # system can hang when pagination is on
         gdb.execute("set pagination off")
 
-        # for rk-data
+        # for printing structs with rk-data
         gdb.execute("set print pretty on")
 
         with open(self.dictfile, 'r') as dct:
             types = json.load(dct)
-
-        types["./kernel/fork.c:812"] = "type = struct task_struct *"
 
         for b in (break_arg.keys() | break_arg_access.keys()):
             # set breakpoint at function entry, to extract size
