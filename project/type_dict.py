@@ -1,9 +1,5 @@
 ###################################################################
 # Format of input file:
-# First line:
-#   directory prefix to prune
-#
-# Rest of lines:
 #    <filename> <func or global> <line> <var or call to free>
 ###################################################################
 
@@ -66,9 +62,10 @@ class CodeDict():
 
             # ugly, but necessary since gdb does not like $ whatis 'dup_task_struct'::tsk
             # and task_struct is too important to give up
-            if "dup_task_struct" in line:
+            if fn == "dup_task_struct":
                 key = f"{src}:{lnr}"
                 val = "type = struct task_struct *"
+                self.dict[key] = val
                 continue
 
             var = re.split('\-\>|\.', var)
