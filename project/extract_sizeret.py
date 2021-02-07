@@ -232,7 +232,7 @@ class FreeBreakpoint(gdb.Breakpoint):
             for watchpoint in watchpoints[address]:
                 print("Deleting watchpoint on", watchpoint.current_chain, "which is at", hex(address))
                 watchpoint.delete()
-                n_watchpoints -= 1
+                n_watchpoints -= len(watchpoint.field_chain)
 
             del(watchpoints[address])
 
@@ -247,7 +247,8 @@ class WriteWatchpoint(gdb.Breakpoint):
     address = None
     type = None
     field_chain = None
-    initial_values = []
+    previous_value = None
+    previous_value_print = None
 
     def __init__(self, address, type, field_chain):
         global watchpoints
@@ -259,7 +260,9 @@ class WriteWatchpoint(gdb.Breakpoint):
         current_chain = f"(({type}){hex(address)})"
         for field in field_chain:
             current_chain = "(" + current_chain + "->" + field + ")"
-            self.initial_values.append(self.get_value(current_chain))
+
+        self.previous_value = self.get_value(current_chain)
+        self.previous_value_print = self.get_value_print(current_chain)
 
         print("Setting watchpoint on", current_chain, "which is at", hex(address))
         self.current_chain = current_chain
@@ -267,15 +270,26 @@ class WriteWatchpoint(gdb.Breakpoint):
 
     def stop(self):
         current_chain = f"(({self.type}){hex(self.address)})"
-        for field, initial_value in zip(self.field_chain, self.initial_values):
-            current_chain += "->(" + field + ")"
+        for field in self.field_chain:
+            current_chain = "(" + current_chain + "->" + field + ")"
 
         current_value = self.get_value(current_chain)
+        if self.previous_value is not None and self.previous_value != current_value:
+            current_value_print = self.get_value_print(current_chain)
 
-        if self.initial_values[-1] != current_value:
-            print(current_chain, "changed from", initial_value, "to", current_value)
+            print(current_chain, "changed from", self.previous_value_print,
+                  "to", current_value_print)
+
+            self.previous_value = current_value
+            self.previous_value_print = current_value_print
 
         return False
+
+    def get_value_print(self, name):
+        try:
+            return "\n".join([line.strip() for line in gdb.execute(f"p {name}", to_string=True).strip().split("\n")[1:-1]])
+        except:
+            return None
 
     def get_value(self, name):
         try:
