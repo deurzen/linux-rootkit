@@ -3,6 +3,7 @@
 import gdb
 import re
 import json
+from enum import IntEnum
 
 # allocator |-> register containing size argument
 break_arg = {
@@ -23,16 +24,20 @@ break_arg_access = {
     "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
 }
 
-# { type -> [field chain] }
-# Make sure each entry in a field chain is a pointer,
-# as it is dereferenced to obtain the next field
-watch_write_field_chain = {
+# { type |-> [(access chain, critical value)] }
+#
+# Make sure each entry in an access chain (apart from the last entry)
+# is a pointer, as it is dereferenced to obtain the next field
+#
+# If `critical_value` is set to None, any changes to the field are reported
+watch_write_access_chain = {
     "struct task_struct *": [
         # (((struct task_struct *)<address>)->real_cred)->uid
-        ["real_cred", "uid"],
+        (["real_cred", "uid"], 0),
     ]
 }
 
+avail_hw_breakpoints = 4
 watchpoints = {}
 n_watchpoints = 0
 
@@ -52,7 +57,13 @@ mem_map = {}
 
 size_at_entry = None
 
-debug = True
+class DebugLevel(IntEnum):
+    __order__ = 'WARN INFO TRACE'
+    WARN = 0
+    INFO = 1
+    TRACE = 2
+
+debug_level = DebugLevel.INFO
 
 class RkPrintMem(gdb.Command):
     def __init__(self):
@@ -71,12 +82,12 @@ RkPrintMem()
 
 class RkDebug(gdb.Command):
     def __init__(self):
-        super(RkDebug, self).__init__("rk-debug", gdb.COMMAND_USER)
+        super(RkDebug, self).__init__("rk-debug_level", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
-        global debug
-        debug = not debug
-        print(f"Debug messages set to {debug}")
+        global debug_level
+        debug_level = DebugLevel((int(debug_level) + 1) % len(list(map(int, DebugLevel))))
+        print(f"debug_level messages set to {debug_level.name}")
 
 RkDebug()
 
@@ -110,9 +121,10 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         gdb.Breakpoint.__init__(self, b)
 
     def stop(self):
+        global avail_hw_breakpoints
         global watchpoints
         global n_watchpoints
-        global watch_write_field_chain
+        global watch_write_access_chain
         global mem_map
 
         frame = gdb.newest_frame()
@@ -139,20 +151,22 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         mem_map[address] = (type, size, caller)
 
-        if type[7:] in watch_write_field_chain:
-            field_chains = watch_write_field_chain[type[7:]]
-            for field_chain in field_chains:
-                if n_watchpoints + len(field_chain) <= 4:
-                    if address in watchpoints:
-                        watchpoints[address].append(WriteWatchpoint(address, type[7:], field_chain))
-                    else:
-                        watchpoints[address] = [WriteWatchpoint(address, type[7:], field_chain)]
+        if type[7:] in watch_write_access_chain:
+            access_chains = watch_write_access_chain[type[7:]]
+            for access_chain, critical_value in access_chains:
+                if n_watchpoints + len(access_chain) <= avail_hw_breakpoints:
+                    watchpoint = WriteWatchpoint(address, type[7:], access_chain, critical_value)
 
-                    n_watchpoints += len(field_chain)
-                    if n_watchpoints >= 4:
+                    if address in watchpoints:
+                        watchpoints[address].append(watchpoint)
+                    else:
+                        watchpoints[address] = [watchpoint]
+
+                    n_watchpoints += len(access_chain)
+                    if n_watchpoints >= avail_hw_breakpoints:
                         break
 
-        if debug:
+        if debug_level >= DebugLevel.TRACE:
             print("Allocating", (type, size, caller), "at", hex(address))
 
         return False
@@ -173,7 +187,9 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
             elif frame.name() in break_arg_access:
                 (reg, type, field) = break_arg_access[frame.name()]
-                size = int(gdb.execute(f"p (({type})${reg})->{field}", to_string=True).strip().split(" ")[2])
+                size = int(gdb.execute(f"p (({type})${reg})->{field}",
+                                       to_string=True).strip().split(" ")[2])
+
                 if size > 0:
                     size_at_entry = size
                     return None
@@ -216,7 +232,7 @@ class FreeBreakpoint(gdb.Breakpoint):
         global watchpoints
         global n_watchpoints
         global free_funcs
-        global debug
+        global debug_level
 
         frame = gdb.newest_frame()
 
@@ -230,14 +246,17 @@ class FreeBreakpoint(gdb.Breakpoint):
 
         if address in watchpoints:
             for watchpoint in watchpoints[address]:
-                print("Deleting watchpoint on", watchpoint.current_chain, "which is at", hex(address))
+                if debug_level >= DebugLevel.INFO:
+                    print("Deleting watchpoint on", watchpoint.current_chain,
+                          "which is at", hex(address))
+
                 watchpoint.delete()
-                n_watchpoints -= len(watchpoint.field_chain)
+                n_watchpoints -= len(watchpoint.access_chain)
 
             del(watchpoints[address])
 
         if address in mem_map:
-            if debug:
+            if debug_level >= DebugLevel.TRACE:
                 print("Freeing", mem_map[address], "at", hex(address))
             mem_map.pop(address)
 
@@ -246,48 +265,60 @@ class FreeBreakpoint(gdb.Breakpoint):
 class WriteWatchpoint(gdb.Breakpoint):
     address = None
     type = None
-    field_chain = None
+    access_chain = None
+    critical_value = None
     previous_value = None
     previous_value_print = None
 
-    def __init__(self, address, type, field_chain):
+    def __init__(self, address, type, access_chain, critical_value):
         global watchpoints
 
         self.address = address
         self.type = type
-        self.field_chain = field_chain
+        self.access_chain = access_chain
+        self.critical_value = critical_value
 
         current_chain = f"(({type}){hex(address)})"
-        for field in field_chain:
+        for field in access_chain:
             current_chain = "(" + current_chain + "->" + field + ")"
 
         self.previous_value = self.get_value(current_chain)
         self.previous_value_print = self.get_value_print(current_chain)
 
-        print("Setting watchpoint on", current_chain, "which is at", hex(address))
+        if debug_level >= DebugLevel.INFO:
+            print("Setting watchpoint on", current_chain, "which is at", hex(address))
+
         self.current_chain = current_chain
         gdb.Breakpoint.__init__(self, current_chain, internal=True, type=gdb.BP_WATCHPOINT)
 
     def stop(self):
         current_chain = f"(({self.type}){hex(self.address)})"
-        for field in self.field_chain:
+        for field in self.access_chain:
             current_chain = "(" + current_chain + "->" + field + ")"
 
         current_value = self.get_value(current_chain)
-        if self.previous_value is not None and self.previous_value != current_value:
-            current_value_print = self.get_value_print(current_chain)
+        current_value_print = self.get_value_print(current_chain)
 
-            print(current_chain, "changed from", self.previous_value_print,
-                  "to", current_value_print)
+        if self.previous_value is not None and current_value is not None:
+            if self.previous_value != current_value:
+                if debug_level >= DebugLevel.INFO:
+                    print(current_chain, "changed from", self.previous_value_print,
+                          "to", current_value_print)
 
-            self.previous_value = current_value
-            self.previous_value_print = current_value_print
+                if debug_level >= DebugLevel.WARN:
+                    current_value = int.from_bytes(bytes(current_value), "little")
+                    if current_value == self.critical_value:
+                        print(f"WARNING: critical value {self.critical_value} set to {current_chain}")
+
+        self.previous_value = current_value
+        self.previous_value_print = current_value_print
 
         return False
 
     def get_value_print(self, name):
         try:
-            return "\n".join([line.strip() for line in gdb.execute(f"p {name}", to_string=True).strip().split("\n")[1:-1]])
+            return "\n".join([line.strip() for line in
+                              gdb.execute(f"p {name}", to_string=True).strip().split("\n")[1:-1]])
         except:
             return None
 
@@ -295,17 +326,17 @@ class WriteWatchpoint(gdb.Breakpoint):
         try:
             size = int(gdb.parse_and_eval(f"sizeof({name})"))
         except:
-            return 0
+            return None
 
         try:
             address = int(gdb.execute(f"p &({name})", to_string = True).strip().split(" ")[-1], 16)
         except:
-            return 0
+            return None
 
         try:
             return gdb.selected_inferior().read_memory(address, size)
         except:
-            return 0
+            return None
 
 class Stage3():
     breakpoints = []
