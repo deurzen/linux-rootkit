@@ -5,7 +5,7 @@ import re
 import json
 from enum import IntEnum
 
-# allocator |-> register containing size argument
+# { allocator |-> register containing size argument }
 break_arg = {
     "kmem_cache_alloc_trace": "rdx",
     "kmalloc_order": "rdi",
@@ -21,7 +21,7 @@ break_arg = {
 }
 
 # when the size is hidden in a struct, things get more complicated
-# allocator |-> (register with struct pointer, struct type, struct member that holds size)
+# { allocator |-> (register with struct pointer, struct type, struct member that holds size) }
 break_arg_access = {
     "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
 }
@@ -46,7 +46,7 @@ avail_hw_breakpoints = 4
 watchpoints = {}
 n_watchpoints = 0
 
-# memory freeing functions |-> register with argument
+# { memory freeing functions |-> register with argument }
 free_funcs = {
     "kfree": "rdi",
     "vfree": "rdi",
@@ -57,16 +57,16 @@ entries = set()
 exits = set()
 types = {}
 
-# Address |-> (type, size, caller)
+# { Address |-> (type, size, caller) }
 mem_map = {}
 
 size_at_entry = None
 
 class DebugLevel(IntEnum):
     __order__ = 'WARN INFO TRACE'
-    WARN = 0 # warn when critical fields (in this case task_struct->cred.uid) change to suspicious values
-    INFO = 1 # show watchpoint additions
-    TRACE = 2 # show every memory allocation
+    WARN = 0    # warn when critical fields (in this case task_struct->cred.uid) change to suspicious values
+    INFO = 1    # show watchpoint additions
+    TRACE = 2   # show every memory allocation
 
 debug_level = DebugLevel.INFO
 
@@ -141,9 +141,11 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         if not frame.is_valid():
             return False
 
+        # FRAME_UNWIND_NO_REASON means the stack unwinding was successful 
         if frame.unwind_stop_reason() != gdb.FRAME_UNWIND_NO_REASON:
             return False
 
+        # leverage statically-compiled dictionary to infer type and callsite
         typeret = self.type_lookup(frame)
 
         if typeret is None:
@@ -151,6 +153,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         (type, caller) = typeret
 
+        # extract size and return value
         extret = self.extract(frame)
 
         if extret is None:
@@ -160,6 +163,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         mem_map[address] = (type, size, caller)
 
+        # TODO
         if type[7:] in watch_write_access_chain:
             access_chains = watch_write_access_chain[type[7:]]
             for access_chain, critical_value in access_chains:
@@ -186,6 +190,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         global exits
         global size_at_entry
 
+        # function entry:
         if self.number in entries:
             # extract size from correct register
             if frame.name() in break_arg:
@@ -194,6 +199,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
                     size_at_entry = size
                     return None
 
+            # extract size from compound argument
             elif frame.name() in break_arg_access:
                 (reg, type, field) = break_arg_access[frame.name()]
                 size = int(gdb.execute(f"p (({type})${reg})->{field}",
@@ -203,6 +209,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
                     size_at_entry = size
                     return None
 
+        # function exit:
         elif self.number in exits and size_at_entry is not None:
             # extract return value, return tuple (size, address)
             ret = (size_at_entry, int(frame.read_register('rax')) & (2 ** 64 - 1))
@@ -216,6 +223,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
 
         f_iter = frame.older()
 
+        # iterate frame-by-frame up the stack
         while f_iter is not None and f_iter.is_valid():
             sym = f_iter.find_sal()
             symtab = sym.symtab
@@ -223,16 +231,17 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             if symtab is None:
                 break
 
-            # https://stackoverflow.com/a/15550907/11069175
-            # https://stackoverflow.com/questions/41565105/gdb-breakpoint-gets-hit-in-the-wrong-line-number
-            # in rare cases, our lines don't match up due to optimizations
-            # therefore, we go one step in each direction (up to 10 times) until we find our type
             key = f"{symtab.filename}:{sym.line}"
 
             if key in types:
                 return (types[key], key)
+    
+            # https://stackoverflow.com/a/15550907/11069175
+            # https://stackoverflow.com/questions/41565105/gdb-breakpoint-gets-hit-in-the-wrong-line-number
+            # in rare cases, our lines don't match up due to optimizations
+            # therefore, we go one step in each direction (up to 10 times) until we find our type
             else:
-                for i in range(10):
+                for i in range(1, 10):
                     key_pos = f"{symtab.filename}:{sym.line + i}"
                     key_neg = f"{symtab.filename}:{sym.line - i}"
                     
@@ -287,10 +296,10 @@ class FreeBreakpoint(gdb.Breakpoint):
 class WriteWatchpoint(gdb.Breakpoint):
     address = None
     type = None
-    access_chain = None
-    critical_value = None
-    previous_value = None
-    previous_value_print = None
+    access_chain = None             # ..->..->..->[field we watch]
+    critical_value = None           # value that, when written to watchpoint location, causes alert 
+    previous_value = None           # used to store previous value for comparison
+    previous_value_print = None     # used for debug output
 
     def __init__(self, address, type, access_chain, critical_value):
         global watchpoints
@@ -374,6 +383,7 @@ class Stage3():
         # for printing structs with rk-data
         gdb.execute("set print pretty on")
 
+        # load in pre-compiled type dictionary
         with open(self.dictfile, 'r') as dct:
             types = json.load(dct)
 
