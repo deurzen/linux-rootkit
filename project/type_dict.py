@@ -62,6 +62,13 @@ class CodeDict():
             lnr = l[2]
             var = l[3]
 
+            # ugly, but necessary since gdb does not like $ whatis 'dup_task_struct'::tsk
+            # and task_struct is too important to give up
+            if "dup_task_struct" in line:
+                key = f"{src}:{lnr}"
+                val = "type = struct task_struct *"
+                continue
+
             var = re.split('\-\>|\.', var)
             var[0] = re.sub('[.*?]', '', var[0])
 
