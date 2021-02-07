@@ -1,9 +1,5 @@
 ###################################################################
 # Format of input file:
-# First line:
-#   directory prefix to prune
-#
-# Rest of lines:
 #    <filename> <func or global> <line> <var or call to free>
 ###################################################################
 
@@ -35,7 +31,9 @@ class CodeDict():
 
     def __init__(self):
         self.setup()
+        print("Creating dictionary, this can take 5 minutes or more..")
         self.parse()
+        print("..done!")
 
         self.outf.write(json.dumps(self.dict))
 
@@ -62,6 +60,14 @@ class CodeDict():
             lnr = l[2]
             var = l[3]
 
+            # ugly, but necessary since gdb does not like $ whatis 'dup_task_struct'::tsk
+            # and task_struct is too important to give up
+            if fn == "dup_task_struct":
+                key = f"{src}:{lnr}"
+                val = "type = struct task_struct *"
+                self.dict[key] = val
+                continue
+
             var = re.split('\-\>|\.', var)
             var[0] = re.sub('[.*?]', '', var[0])
 
@@ -77,9 +83,7 @@ class CodeDict():
                     continue
 
             if len(var) > 1:
-                print("looking in", type_info[7:].strip(), "for", var[1:])
                 type_info = self.parse_chain(type_info[7:], var, 1)
-                print("FOUND:", type_info)
 
             if type_info is not None:
                 key = f"{src}:{lnr}"

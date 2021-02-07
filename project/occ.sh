@@ -1,5 +1,7 @@
 #!/bin/bash
-#Extract all occurences of function calls and the assigned variables from kernel sources
+#extract all occurences of function calls and the assigned variables from kernel sources
+
+#these are (more or less) wrappers for the functions we use in extract_sizeret.py
 funcs=("kmalloc" "kzalloc" "vmalloc" "vzalloc" "alloc_task_struct_node")
 out=".funcs"
 
