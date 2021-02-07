@@ -1,7 +1,7 @@
 \documentclass{i20lecture}
 \usepackage{listings}
 
-\subtitle{LiveDM - Proof of Concept}
+\subtitle{LiveDM --- Proof of Concept}
 
 \begin{document}
 
@@ -28,16 +28,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}{\insertsection}
   \framesubtitle{Dynamic Kernel Memory}
-  
+
   \begin{itemize}
-    \item Dynamic kernel memory is..
+    \item Dynamic kernel memory is...
     \begin{itemize}
 \pause
-    \item ..hard to make sense of -- usually, no type information is available
+    \item ...hard to make sense of -- usually, no type information is available
 \pause
-    \item ..changing \textit{very} frequently
+	\item ...constantly changing -- it's dynamic, after all
 \pause
-    \item ..difficult to analyze!
+    \item ...difficult to analyze!
     \end{itemize}
 \pause
     \item How can we make analysis easier?
@@ -45,76 +45,86 @@
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM - Overview}
-  
+  \framesubtitle{LiveDM --- Overview}
+
   \begin{itemize}
-    \item LiveDM seeks to overcome the previous issues through Virtual Machine Introspection
+	\item LiveDM seeks to overcome these issues through Virtual Machine Introspection (VMI)
+	\pause
+	\begin{itemize}
+		\item Monitor the runtime state of a system-level VM
+		\pause
+		\item Without altering the guest OS
+	\end{itemize}
 \pause
     \item Memory allocation events can be intercepted from a
 \pause
     \item Going from there, LiveDM is able to create a memory map
-\pause
-    \item This map even includes type information!
+	\begin{itemize}
+		\item Monitor the runtime state of a system-level VM
+		\pause
+		\item This map includes type information!
+	\end{itemize}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM - Overview}
-  
+  \framesubtitle{LiveDM --- Overview}
+
   \begin{itemize}
-    \item Three phases \footnote{The word 'phase' is not the best pick here} exist to create the mapping:
+    \item Three distinct stages to create the mapping:
     \begin{enumerate}
 \pause
      \item Gathering of necessary values
 \pause
      \item Determining scope of interpretation
 \pause
-     \item Data type interpretation
+     \item Performing type interpretation
     \end{enumerate}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM - Phase 1}
-  
+  \framesubtitle{LiveDM --- Stage 1}
+
   \begin{itemize}
-    \item Phase 1 is comprised of..
+    \item Stage 1 is comprised of...
     \begin{itemize}
 \pause
-     \item ..intercepting a set of memory allocation/freeing functions
+     \item ...intercepting a set of memory allocation/deallocation functions
 \pause
-     \item ..retrieving the requested size, as well as the return value
+     \item ...retrieving the requested allocation size, as well as the return value
 \pause
-     \item ..identifying the caller through the stack's return address
+	 \item ...identifying the caller (call site) through the stack's return address
     \end{itemize}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM - Phase 2}
-  
+  \framesubtitle{LiveDM --- Stage 2}
+
   \begin{itemize}
-    \item In phase 2, the scope of memory monitoring is chosen
+    \item In stage 2, the scope of memory monitoring is chosen
     \begin{itemize}
 \pause
      \item Offer snapshots of the memory map (containing type and size for allocated memory)
      \begin{itemize}
-      \item We offer this in our PoC
+		 \item We offer this in our PoC (\lstinline|rk-print-mem| and \lstinline|rk-data <address>|)
      \end{itemize}
 \pause
-     \item Trace every memory access on known memory blocks
+	 \item Trace every memory (write) access on known (vulnerable) memory blocks
      \begin{itemize}
-      \item We are able to showcase that on a small example
+      \item Warn when critical values are written to traced blocks
+      \item We are able to showcase this in a small demo
      \end{itemize}
     \end{itemize}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM - Phase 3}
-  
+  \framesubtitle{LiveDM --- Stage 3}
+
   \begin{itemize}
-    \item In phase 3, the caller's address is translated into a type
+    \item In stage 3, the caller's address is translated into a type
 \pause
     \begin{itemize}
      \item Relies on instrumenting GCC to retrieve abstract syntax tree (AST)
@@ -123,10 +133,10 @@
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{LiveDM - Motivation}
-  
+  \framesubtitle{LiveDM --- Motivation}
+
   \begin{itemize}
-    \item Why do we need this information? Possible answers include..
+    \item Why do we need this information? Possible answers include...
     \begin{enumerate}
 \pause
      \item To make dynamic memory less transparent
@@ -142,25 +152,40 @@
 \section{Approach}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}{\insertsection}
-  \framesubtitle{VMM}
-  
+  \begin{enumerate}
+   \item Background
+    \item Approach
+    \begin{itemize}
+        \item Tools
+        \item Implementing stage 1
+        \item Implementing stage 2
+        \item Implementing stage 3
+    \end{itemize}
+    \item Results
+    \item Discussion / Questions
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{\insertsection}
+  \framesubtitle{Tools}
+
   \begin{itemize}
    \item Since introspection techniques are required, we need a VMM
 \pause
     \begin{itemize}
     \item Xen
     \item KVM
-    \item QEMU (our pick; introspection done with GDB)
-    \item ..
+	\item \textcolor{yellow}{QEMU} (in vivo introspection using GDB)
+    \item ...
     \end{itemize}
   \end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{Implementing Phase 1}
-    
+  \framesubtitle{Implementing stage 1}
+
     \begin{itemize}
-     \item Intercepting allocation functions is easy: breakpoints
+	\item Intercepting allocations is easy: non-blocking \textbf{breakpoints}
      \begin{itemize}
 \pause
       \item Has a significant performance overhead, but system is still usable
@@ -168,19 +193,19 @@
       \item Possible improvement: hardware breakpoints
 \pause
         \begin{itemize}
-            \item Limited to a small number
+			\item Limited to a small amount
 \pause
-            \item Only part of GDB's Python API since 21st January 2021..
+            \item Only part of GDB's Python API since January 21st, 2021...
         \end{itemize}
      \end{itemize}
     \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing Phase 1}
-    
+  \framesubtitle{Implementing stage 1}
+
     \begin{itemize}
-     \item To retrieve the size parameter, we can rely on the System V calling convention
+     \item To retrieve the size of the allocation, we can rely on the System V calling convention
 \pause
      \begin{itemize}
       \item As the size is not always the first argument, we build a dictionary:
@@ -194,59 +219,63 @@
     }
     \end{lstlisting}
 \pause
-    \begin{itemize}
-     \item Return values are gathered by additionally breaking on return instructions
-     \begin{itemize}
-\pause
-     \item Only one will be generated per function
-     \end{itemize}
-    \end{itemize}
+	\begin{itemize}
+		\item Return values are gathered by additionally breaking on return instructions
+		\pause
+		\begin{itemize}
+			\item Look for \lstinline|ret{,q}| instruction's offset from function entry in the disassembly
+			\pause
+			\item Break on \lstinline|<function entry> + <ret offset>|
+			\pause
+			\item Retrieve return value from \lstinline|$rax|
+		\end{itemize}
+	\end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{Implementing Phase 1}
-    
+  \framesubtitle{Implementing stage 1}
+
     \begin{itemize}
      \item LiveDM relies on the return address on the stack
 \pause
-     \item Instead, we walk the unwinded stack and retrieve the \texttt{file:line} information
+     \item Instead, we walk frame by frame up the stack and retrieve the file name and line number at the assignment location
 \pause
      \begin{itemize}
-      \item More on that later..
+      \item More on that later...
      \end{itemize}
     \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing Phase 2}
-    
+  \framesubtitle{Implementing stage 2}
+
     \begin{enumerate}
      \item Snapshot-based approach
 \pause
      \begin{itemize}
       \item Since we already store everything gathered, this is readily available
 \pause
-      \item Currently allocated memory can be listed with \texttt{rk-print-mem}:
+      \item Currently allocated memory can be listed with \lstinline|rk-print-mem|:
      \end{itemize}
     \end{enumerate}
     \begin{lstlisting}
-    > rk-print-mem 
+    > rk-print-mem
       type: struct task_struct *, size: 3776 B, addr: 0xffff9e65bb961d80, caller: ./kernel/fork.c:812
       type: struct fdtable *, size: 56 B, addr: 0xffff9e65bc7d7280, caller: ./fs/file.c:111
     \end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing Phase 2}
-    
+  \framesubtitle{Implementing stage 2}
+
     \begin{enumerate}
      \setcounter{enumi}{1}
      \item Memory-access tracing
 \pause
     \begin{itemize}
-     \item Would require some advanced techniques (ex.: page unmapping) for full coverage
+     \item Would require some advanced techniques (e.g., page unmapping) for full coverage
 \pause
-    \item Not feasible for the given time frame
+    \item Not feasible within the given time frame
 \pause
     \item Instead, we will demonstrate a small example later based on \textit{hardware} watchpoints
     \end{itemize}
@@ -254,37 +283,43 @@
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing Phase 3}
+  \framesubtitle{Implementing stage 3}
     \begin{itemize}
-     \item Translation of call sites to types; possible approaches:
+     \item Translation of call sites to types
+	 \pause
+     \item Possible approaches:
      \begin{itemize}
 \pause
       \item Instrumenting \texttt{gcc} to extract AST (LiveDM)
 \pause
-      \item Using \texttt{clang} to generate an AST without instrumentation
+      \item Use \texttt{clang} to generate an AST without instrumentation
 \pause
-      \item Abusing GDB's \texttt{whatis} command to statically pre-compute type dictionary (Our pick)
+	  \item \textcolor{yellow}{Utilize GDB's \texttt{whatis} command to statically pre-compute type dictionary}
      \end{itemize}
     \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing Phase 3}
+  \framesubtitle{Implementing stage 3}
     \begin{itemize}
-     \item Process for generating the type dictionary: \footnote{Fully automated, since very specific to kernel  code version}
+     \item Process for generating the type dictionary: \footnote{Fully automated, since specific to kernel sources version, build options, and compiler optimizations}
 \pause
      \begin{enumerate}
       \item Find all occurences of function calls we are interested in using \texttt{cscope}
 \pause
-      \item Iterate the generated occurences in python; execute \texttt{whatis} on every variable
+      \item Iterate the generated occurences using Python; execute \texttt{whatis} on every assigned-to symbol
       \begin{itemize}
 \pause
-       \item Assumption: kernel symbols are loaded
+       \item Assumption: debug symbols for current kernel sources are available
 \pause
-       \item Compound types (example: \lstinline|desc->inbuf|) have to be resolved incrementally by us
+       \item Compound type access chains (e.g., \lstinline|desc->inbuf|) have to be recursively resolved
+	\pause
+	   \item We only require the type of the last dereferenced field, as that is what's being assigned to
       \end{itemize}
 \pause
-      \item Place the results in a dictionary; can be loaded by the 'main' python script
+      \item Store the results in a dictionary
+\pause
+      \item Use this precompiled type dictionary in our runtime script
 \pause
      \end{enumerate}
     \end{itemize}
@@ -295,9 +330,9 @@
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing Phase 3}
+  \framesubtitle{Implementing stage 3}
     \begin{itemize}
-     \item Once a breakpoint is encountered, we can walk the stack with gdb..
+     \item Once a breakpoint is encountered, we can walk the stack with gdb...
     \end{itemize}
 \pause
     \begin{lstlisting}
@@ -307,7 +342,7 @@
     \end{lstlisting}
 \pause
     \begin{itemize}
-     \item ..and match the \texttt{file:line} descriptor to a type without expensive computations
+     \item ...and match the \texttt{file:line} descriptor to a type without expensive computations
     \end{itemize}
 \end{frame}
 

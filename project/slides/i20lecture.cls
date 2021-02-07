@@ -142,8 +142,8 @@
 % META
 % =========================================================
 \title[None]{Rootkit Programming - Final Presentation}
-\author[Max v. D., Tizian L.]{Max van Deurzen, Tizian Leonhardt}
-\semester{Wintersemester 2020/21}
+\author[Tizian L., Max v. D.]{Tizian Leonhardt, Max van Deurzen}
+\semester{Wintersemester 20/21}
 \institute{}
-\date{10. February, 2021}
+\date{February 8, 2021}
 % =========================================================
