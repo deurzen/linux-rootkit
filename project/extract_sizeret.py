@@ -65,7 +65,7 @@ size_at_entry = None
 class DebugLevel(IntEnum):
     __order__ = 'WARN INFO TRACE'
     WARN = 0 # warn when critical fields (in this case task_struct->cred.uid) change to suspicious values
-    INFO = 1 # show tracepoint additions
+    INFO = 1 # show watchpoint additions
     TRACE = 2 # show every memory allocation
 
 debug_level = DebugLevel.INFO
@@ -159,7 +159,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
-        
+
         if type[7:] in watch_write_access_chain:
             access_chains = watch_write_access_chain[type[7:]]
             for access_chain, critical_value in access_chains:
