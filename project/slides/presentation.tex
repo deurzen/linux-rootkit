@@ -56,11 +56,10 @@
 		\item Without altering the guest OS
 	\end{itemize}
 \pause
-    \item Memory allocation events can be intercepted from a
+    \item Memory allocation events can be intercepted
 \pause
     \item Going from there, LiveDM is able to create a memory map
 	\begin{itemize}
-		\item Monitor the runtime state of a system-level VM
 		\pause
 		\item This map includes type information!
 	\end{itemize}
@@ -89,7 +88,6 @@
   \begin{itemize}
     \item Stage 1 is comprised of...
     \begin{itemize}
-\pause
      \item ...intercepting a set of memory allocation/deallocation functions
 \pause
      \item ...retrieving the requested allocation size, as well as the return value
@@ -263,6 +261,7 @@
       type: struct task_struct *, size: 3776 B, addr: 0xffff9e65bb961d80, caller: ./kernel/fork.c:812
       type: struct fdtable *, size: 56 B, addr: 0xffff9e65bc7d7280, caller: ./fs/file.c:111
     \end{lstlisting}
+	RK-DATA <ADDRESS>
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
