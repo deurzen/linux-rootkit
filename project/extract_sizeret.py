@@ -20,6 +20,8 @@ break_arg = {
     "vmalloc_32_user": "rdi",
 }
 
+# when the size is hidden in a struct, things get more complicated
+# allocator |-> (register with struct pointer, struct type, struct member that holds size)
 break_arg_access = {
     "kmem_cache_alloc_node": ("rdi", "struct kmem_cache *", "object_size"),
 }
@@ -37,7 +39,10 @@ watch_write_access_chain = {
     ]
 }
 
+# this is limited by the amount of debug registers..
 avail_hw_breakpoints = 4
+
+# store watchpoints so we can delete them later on (i.e., once the corresponding struct is freed)
 watchpoints = {}
 n_watchpoints = 0
 
@@ -59,9 +64,9 @@ size_at_entry = None
 
 class DebugLevel(IntEnum):
     __order__ = 'WARN INFO TRACE'
-    WARN = 0
-    INFO = 1
-    TRACE = 2
+    WARN = 0 # warn when critical fields (in this case task_struct->cred.uid) change to suspicious values
+    INFO = 1 # show tracepoint additions
+    TRACE = 2 # show every memory allocation
 
 debug_level = DebugLevel.INFO
 
@@ -119,7 +124,7 @@ class RkPrintData(gdb.Command):
 
 RkPrintData()
 
-
+# this breakpoint can react to function entry and exit
 class EntryExitBreakpoint(gdb.Breakpoint):
     def __init__(self, b):
         gdb.Breakpoint.__init__(self, b)
@@ -154,7 +159,7 @@ class EntryExitBreakpoint(gdb.Breakpoint):
         (size, address) = extret
 
         mem_map[address] = (type, size, caller)
-
+        
         if type[7:] in watch_write_access_chain:
             access_chains = watch_write_access_chain[type[7:]]
             for access_chain, critical_value in access_chains:
@@ -218,10 +223,24 @@ class EntryExitBreakpoint(gdb.Breakpoint):
             if symtab is None:
                 break
 
+            # https://stackoverflow.com/a/15550907/11069175
+            # https://stackoverflow.com/questions/41565105/gdb-breakpoint-gets-hit-in-the-wrong-line-number
+            # in rare cases, our lines don't match up due to optimizations
+            # therefore, we go one step in each direction (up to 10 times) until we find our type
             key = f"{symtab.filename}:{sym.line}"
 
             if key in types:
                 return (types[key], key)
+            else:
+                for i in range(10):
+                    key_pos = f"{symtab.filename}:{sym.line + i}"
+                    key_neg = f"{symtab.filename}:{sym.line - i}"
+                    
+                    if key_neg in types:
+                        return (types[key_neg], key_neg)
+                    
+                    if key_pos in types:
+                        return (types[key_pos], key_pos) 
 
             f_iter = f_iter.older()
 
