@@ -87,7 +87,7 @@ class RkDebug(gdb.Command):
     def invoke(self, arg, from_tty):
         global debug_level
         debug_level = DebugLevel((int(debug_level) + 1) % len(list(map(int, DebugLevel))))
-        print(f"debug_level messages set to {debug_level.name}")
+        print(f"debug level set to {debug_level.name}")
 
 RkDebug()
 
@@ -247,8 +247,7 @@ class FreeBreakpoint(gdb.Breakpoint):
         if address in watchpoints:
             for watchpoint in watchpoints[address]:
                 if debug_level >= DebugLevel.INFO:
-                    print("Deleting watchpoint on", watchpoint.current_chain,
-                          "which is at", hex(address))
+                    print("Deleting watchpoint on", watchpoint.current_chain)
 
                 watchpoint.delete()
                 n_watchpoints -= len(watchpoint.access_chain)
@@ -286,7 +285,7 @@ class WriteWatchpoint(gdb.Breakpoint):
         self.previous_value_print = self.get_value_print(current_chain)
 
         if debug_level >= DebugLevel.INFO:
-            print("Setting watchpoint on", current_chain, "which is at", hex(address))
+            print("Setting watchpoint on", current_chain)
 
         self.current_chain = current_chain
         gdb.Breakpoint.__init__(self, current_chain, internal=True, type=gdb.BP_WATCHPOINT)
@@ -317,23 +316,20 @@ class WriteWatchpoint(gdb.Breakpoint):
 
     def get_value_print(self, name):
         try:
-            return "\n".join([line.strip() for line in
-                              gdb.execute(f"p {name}", to_string=True).strip().split("\n")[1:-1]])
+            value_print = [line.strip() for line in
+                           gdb.execute(f"p {name}", to_string=True).strip().split("\n")[1:-1]]
+
+            if len(value_print) > 1:
+                return "(" + " ".join(value_print) + ")"
+            else:
+                return value_print[0]
         except:
             return None
 
     def get_value(self, name):
         try:
             size = int(gdb.parse_and_eval(f"sizeof({name})"))
-        except:
-            return None
-
-        try:
             address = int(gdb.execute(f"p &({name})", to_string = True).strip().split(" ")[-1], 16)
-        except:
-            return None
-
-        try:
             return gdb.selected_inferior().read_memory(address, size)
         except:
             return None
