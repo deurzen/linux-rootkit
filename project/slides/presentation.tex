@@ -75,7 +75,7 @@
 \pause
      \item Gathering of necessary values
 \pause
-     \item Determining scope of interpretation
+     \item Determining the scope of memory monitoring
 \pause
      \item Performing type interpretation
     \end{enumerate}
@@ -155,9 +155,9 @@
     \item Approach
     \begin{itemize}
         \item Tools
-        \item Implementing stage 1
-        \item Implementing stage 2
-        \item Implementing stage 3
+        \item Implementing stage 1 --- Gathering of necessary values
+        \item Implementing stage 2 --- Determining the scope of memory monitoring
+        \item Implementing stage 3 --- Performing type interpretation
     \end{itemize}
     \item Results
     \item Discussion / Questions
@@ -180,7 +180,7 @@
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{Implementing stage 1}
+  \framesubtitle{Implementing stage 1 --- Gathering of necessary values}
 
     \begin{itemize}
 	\item Intercepting allocations is easy: non-blocking \textbf{breakpoints}
@@ -192,18 +192,16 @@
 \pause
         \begin{itemize}
 			\item Limited to a small amount
-\pause
-            \item Only part of GDB's Python API since January 21st, 2021...
         \end{itemize}
      \end{itemize}
     \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 1}
+  \framesubtitle{Implementing stage 1 --- Gathering of necessary values}
 
     \begin{itemize}
-     \item To retrieve the size of the allocation, we can rely on the System V calling convention
+     \item To retrieve the size and return value of each allocation, we can rely on the System V calling convention
 \pause
      \begin{itemize}
       \item As the size is not always the first argument, we build a dictionary:
@@ -218,6 +216,8 @@
     \end{lstlisting}
 \pause
 	\begin{itemize}
+	\item[]
+	\begin{itemize}
 		\item Return values are gathered by additionally breaking on return instructions
 		\pause
 		\begin{itemize}
@@ -228,10 +228,11 @@
 			\item Retrieve return value from \lstinline|$rax|
 		\end{itemize}
 	\end{itemize}
+	\end{itemize}
 \end{frame}
 
 \begin{frame}{\insertsection}
-  \framesubtitle{Implementing stage 1}
+  \framesubtitle{Implementing stage 1 --- Gathering of necessary values}
 
     \begin{itemize}
      \item LiveDM relies on the return address on the stack
@@ -245,7 +246,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 2}
+  \framesubtitle{Implementing stage 2 --- Determining the scope of memory monitoring}
 
     \begin{enumerate}
      \item Snapshot-based approach
@@ -253,7 +254,7 @@
      \begin{itemize}
       \item Since we already store everything gathered, this is readily available
 \pause
-      \item Currently allocated memory can be listed with \lstinline|rk-print-mem|:
+      \item Currently allocated memory can be listed with \lstinline|rk-print-mem| and interpreted with \lstinline|rk-data <address>|:
      \end{itemize}
     \end{enumerate}
     \begin{lstlisting}
@@ -280,7 +281,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 2}
+  \framesubtitle{Implementing stage 2 --- Determining the scope of memory monitoring}
 
     \begin{enumerate}
      \setcounter{enumi}{1}
@@ -297,31 +298,31 @@
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 3}
+  \framesubtitle{Implementing stage 3 --- Performing type interpretation}
     \begin{itemize}
      \item Translation of call sites to types
 	 \pause
      \item Possible approaches:
      \begin{itemize}
 \pause
-      \item Instrumenting \texttt{gcc} to extract AST (LiveDM)
+      \item Instrumenting \lstinline|gcc| to extract AST (LiveDM)
 \pause
-      \item Use \texttt{clang} to generate an AST without instrumentation
+      \item Use \lstinline|clang| to generate an AST without instrumentation
 \pause
-	  \item \textcolor{yellow}{Utilize GDB's \texttt{whatis} command to statically pre-compute type dictionary}
+	  \item \textcolor{yellow}{Utilize GDB's \lstinline|whatis| command to statically pre-compute type dictionary}
      \end{itemize}
     \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 3}
+  \framesubtitle{Implementing stage 3 --- Performing type interpretation}
     \begin{itemize}
      \item Process for generating the type dictionary: \footnote{Fully automated, since specific to kernel sources version, build options, and compiler optimizations}
 \pause
      \begin{enumerate}
-      \item Find all occurences of function calls we are interested in using \texttt{cscope}
+      \item Find all occurences of function calls we are interested in using \lstinline|cscope|
 \pause
-      \item Iterate the generated occurences using Python; execute \texttt{whatis} on every assigned-to symbol
+      \item Iterate the generated occurences using Python; execute \lstinline|whatis| on every assigned-to symbol
       \begin{itemize}
 \pause
        \item Assumption: debug symbols for current kernel sources are available
@@ -344,7 +345,7 @@
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 3}
+  \framesubtitle{Implementing stage 3 --- Performing type interpretation}
     \begin{itemize}
      \item Once a breakpoint is encountered, we can walk the stack with gdb...
     \end{itemize}
@@ -356,7 +357,7 @@
     \end{lstlisting}
 \pause
     \begin{itemize}
-     \item ...and match the \texttt{file:line} descriptor to a type without expensive computations
+     \item ...and match the \lstinline|file:line| descriptor to a type without expensive computations
     \end{itemize}
 \end{frame}
 
