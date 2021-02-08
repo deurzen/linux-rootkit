@@ -258,10 +258,25 @@
     \end{enumerate}
     \begin{lstlisting}
     > rk-print-mem
-      type: struct task_struct *, size: 3776 B, addr: 0xffff9e65bb961d80, caller: ./kernel/fork.c:812
-      type: struct fdtable *, size: 56 B, addr: 0xffff9e65bc7d7280, caller: ./fs/file.c:111
+	  type: struct task_struct *, size: 3776 B, address: 0xffff8e72b87ce740, call site: ./kernel/fork.c:807
+	  type: struct fdtable *, size: 56 B, address: 0xffff8e72b84104c0, call site: ./fs/file.c:111
     \end{lstlisting}
-	RK-DATA <ADDRESS>
+    \begin{lstlisting}
+	> rk-data 0xffff8e72b84104c0
+	  resolving 0xffff8e72b84104c0 to type = struct fdtable *
+
+	  $17 = {
+	    max_fds = 256,
+	    fd = 0xffff8e72b8ea4800,
+	    close_on_exec = 0xffff8e72b8411800,
+	    open_fds = 0xffff8e72b84117e0,
+	    full_fds_bits = 0xffff8e72b8411820,
+	    rcu = {
+	  	next = 0x0,
+	  	func = 0x0
+	    }
+	  }
+    \end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
