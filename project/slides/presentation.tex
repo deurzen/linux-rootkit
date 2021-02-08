@@ -258,12 +258,16 @@
 \begin{frame}[fragile]{\insertsection}
   \framesubtitle{Implementing stage 3 --- Performing type interpretation}
     \begin{itemize}
-     \item Process for generating the type dictionary: \footnote{Fully automated, since specific to kernel sources version, build options, and compiler optimizations}
+     \item Process for statically generating the type dictionary: \footnote{Fully automated, since specific to kernel sources version, build options, and compiler optimizations}
 \pause
      \begin{enumerate}
       \item Find all occurences of function calls we are interested in using \lstinline|cscope|
 \pause
-      \item Iterate the generated occurences using Python; execute \lstinline|whatis| on every assigned-to symbol
+      \item Iterate over the generated occurences
+\pause
+      \item Extract the assigned-to symbol name at call site
+\pause
+      \item Execute \lstinline|whatis| on every assigned-to symbol
       \begin{itemize}
 \pause
        \item Assumption: debug symbols for current kernel sources are available
@@ -281,7 +285,8 @@
     \end{itemize}
     \begin{lstlisting}
      "./arch/x86/kernel/e820.c:675": "type = struct e820_table *",
-     "./arch/x86/kernel/e820.c:681": "type = struct e820_table *"
+     "./arch/x86/kernel/e820.c:681": "type = struct e820_table *",
+	 [...]
     \end{lstlisting}
 \end{frame}
 
