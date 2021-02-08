@@ -31,7 +31,7 @@ Output levels:*
 
 ```
 WARN 	# warn when critical fields (in this case task_struct->cred.uid) change to suspicious values
-INFO 	# also print tracepoint additions
+INFO 	# also print watchpoint additions
 TRACE 	# also print every memory allocation
 ```
 
