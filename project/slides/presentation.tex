@@ -111,7 +111,6 @@
 \pause
 	 \item Trace every memory (write) access on known (vulnerable) memory blocks
      \begin{itemize}
-      \item Warn when critical values are written to traced blocks
       \item We are able to showcase this in a small demo
      \end{itemize}
     \end{itemize}
@@ -248,7 +247,7 @@
 \pause
       \item Instrumenting \lstinline|gcc| to extract AST (LiveDM)
 \pause
-      \item Use \lstinline|clang| to generate an AST without instrumentation
+      \item Use \lstinline|clang| to generate an AST
 \pause
 	  \item \textcolor{yellow}{Utilize GDB's \lstinline|whatis| command to statically pre-compute type dictionary}
      \end{itemize}
@@ -354,7 +353,10 @@
 \pause
     \item Not feasible within the given time frame
 \pause
-    \item Instead, we will demonstrate a small example later based on \textit{hardware} watchpoints
+    \item Instead, we will demonstrate a small example based on \textit{hardware} watchpoints
+		\begin{itemize}
+		  \item Warn when critical values are written to traced blocks
+		\end{itemize}
     \end{itemize}
     \end{enumerate}
 \end{frame}
