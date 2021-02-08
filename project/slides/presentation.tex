@@ -51,7 +51,7 @@
 	\item LiveDM seeks to overcome these issues through Virtual Machine Introspection (VMI)
 	\pause
 	\begin{itemize}
-		\item Monitor the runtime state of a system-level VM
+		\item Monitor the runtime state of a VM
 		\pause
 		\item Without altering the guest OS
 	\end{itemize}
@@ -366,15 +366,34 @@
 \begin{frame}[fragile]{\insertsection}
   \framesubtitle{Demo 1 - Allocation \& Deallocation}
     \begin{itemize}
-     \item We will demonstrate the output in a running system now
+     \item We will demonstrate the output in a running system now:
      \end{itemize}
+     \begin{lstlisting}
+      Allocating ('type = struct elf64_phdr *', 616, './fs/binfmt_elf.c:441') at 0xffff8d96b8857000
+      Allocating ('type = char *', 28, './fs/binfmt_elf.c:762') at 0xffff8d96ba5d98e0
+      Allocating ('type = struct elf64_phdr *', 504, './fs/binfmt_elf.c:441') at 0xffff8d96bb4b1e00
+      Allocating ('type = void *', 168, './block/bio.c:452') at 0xffff8d96ba14bcc0
+
+     \end{lstlisting}
+
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
   \framesubtitle{Demo 2 - Rootkit Detection}
     \begin{itemize}
-     \item We will demonstrate the output in a running system now
+     \item We will demonstrate the rootkit detection in a running system now:
      \end{itemize}
+     \begin{lstlisting}
+        //inside the vm, rootkit is loaded
+        > make_me_root
+     \end{lstlisting}
+     \begin{lstlisting}
+        ((((struct task_struct *)0xffff8d96bb6849c0)->real_cred)->uid) changed from val = 1000 to val = 0
+        WARNING: critical value 0 set to ((((struct task_struct *)0xffff8d96bb6849c0)->real_cred)->uid)
+
+     \end{lstlisting}
+     
+
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
