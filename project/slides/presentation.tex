@@ -156,8 +156,8 @@
     \begin{itemize}
         \item Tools
         \item Implementing stage 1 --- Gathering of necessary values
-        \item Implementing stage 2 --- Determining the scope of memory monitoring
         \item Implementing stage 3 --- Performing type interpretation
+        \item Implementing stage 2 --- Determining the scope of memory monitoring
     \end{itemize}
     \item Results
     \item Discussion / Questions
@@ -185,6 +185,13 @@
     \begin{itemize}
 	\item Intercepting allocations is easy: non-blocking \textbf{breakpoints}
      \begin{itemize}
+\pause
+      \item Break on function entry and exit
+        \begin{itemize}
+\pause
+			\item At entry we extract allocation size
+			\item At exit we extract return value (base address of allocation)
+        \end{itemize}
 \pause
       \item Has a significant performance overhead, but system is still usable
 \pause
@@ -229,72 +236,6 @@
 		\end{itemize}
 	\end{itemize}
 	\end{itemize}
-\end{frame}
-
-\begin{frame}{\insertsection}
-  \framesubtitle{Implementing stage 1 --- Gathering of necessary values}
-
-    \begin{itemize}
-     \item LiveDM relies on the return address on the stack
-\pause
-     \item Instead, we walk frame by frame up the stack and retrieve the file name and line number at the assignment location
-\pause
-     \begin{itemize}
-      \item More on that later...
-     \end{itemize}
-    \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 2 --- Determining the scope of memory monitoring}
-
-    \begin{enumerate}
-     \item Snapshot-based approach
-\pause
-     \begin{itemize}
-      \item Since we already store everything gathered, this is readily available
-\pause
-      \item Currently allocated memory can be listed with \lstinline|rk-print-mem| and interpreted with \lstinline|rk-data <address>|:
-     \end{itemize}
-    \end{enumerate}
-    \begin{lstlisting}
-    > rk-print-mem
-	  type: struct task_struct *, size: 3776 B, address: 0xffff8e72b87ce740, call site: ./kernel/fork.c:807
-	  type: struct fdtable *, size: 56 B, address: 0xffff8e72b84104c0, call site: ./fs/file.c:111
-    \end{lstlisting}
-    \begin{lstlisting}
-	> rk-data 0xffff8e72b84104c0
-	  resolving 0xffff8e72b84104c0 to type = struct fdtable *
-
-	  $17 = {
-	    max_fds = 256,
-	    fd = 0xffff8e72b8ea4800,
-	    close_on_exec = 0xffff8e72b8411800,
-	    open_fds = 0xffff8e72b84117e0,
-	    full_fds_bits = 0xffff8e72b8411820,
-	    rcu = {
-	  	next = 0x0,
-	  	func = 0x0
-	    }
-	  }
-    \end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]{\insertsection}
-  \framesubtitle{Implementing stage 2 --- Determining the scope of memory monitoring}
-
-    \begin{enumerate}
-     \setcounter{enumi}{1}
-     \item Memory-access tracing
-\pause
-    \begin{itemize}
-     \item Would require some advanced techniques (e.g., page unmapping) for full coverage
-\pause
-    \item Not feasible within the given time frame
-\pause
-    \item Instead, we will demonstrate a small example later based on \textit{hardware} watchpoints
-    \end{itemize}
-    \end{enumerate}
 \end{frame}
 
 \begin{frame}[fragile]{\insertsection}
@@ -359,6 +300,58 @@
     \begin{itemize}
      \item ...and match the \lstinline|file:line| descriptor to a type without expensive computations
     \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing stage 2 --- Determining the scope of memory monitoring}
+
+    \begin{enumerate}
+     \item Snapshot-based approach
+\pause
+     \begin{itemize}
+      \item Since we already store everything gathered, this is readily available
+\pause
+      \item Live allocations can be listed with \lstinline|rk-print-mem| and interpreted with \lstinline|rk-data <address>|:
+     \end{itemize}
+    \end{enumerate}
+    \begin{lstlisting}
+    > rk-print-mem
+	  type: struct task_struct *, size: 3776 B, address: 0xffff8e72b87ce740, call site: ./kernel/fork.c:807
+	  type: struct fdtable *, size: 56 B, address: 0xffff8e72b84104c0, call site: ./fs/file.c:111
+    \end{lstlisting}
+    \begin{lstlisting}
+	> rk-data 0xffff8e72b84104c0
+	  resolving 0xffff8e72b84104c0 to type = struct fdtable *
+
+	  $17 = {
+	    max_fds = 256,
+	    fd = 0xffff8e72b8ea4800,
+	    close_on_exec = 0xffff8e72b8411800,
+	    open_fds = 0xffff8e72b84117e0,
+	    full_fds_bits = 0xffff8e72b8411820,
+	    rcu = {
+	  	next = 0x0,
+	  	func = 0x0
+	    }
+	  }
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{\insertsection}
+  \framesubtitle{Implementing stage 2 --- Determining the scope of memory monitoring}
+
+    \begin{enumerate}
+     \setcounter{enumi}{1}
+     \item Memory-access tracing
+\pause
+    \begin{itemize}
+     \item Would require some advanced techniques (e.g., page unmapping) for full coverage
+\pause
+    \item Not feasible within the given time frame
+\pause
+    \item Instead, we will demonstrate a small example later based on \textit{hardware} watchpoints
+    \end{itemize}
+    \end{enumerate}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
